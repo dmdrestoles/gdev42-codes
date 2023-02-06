@@ -44,23 +44,37 @@ std::vector<Vector2> GenerateBezierCurvePoints(Vector2 start, Vector2 mid, Vecto
 
 int main()
 {
-    int radius = 8;
-    int lineWidth = 3;
-    Vector2 p1;
-    Vector2 p2;
-    Vector2 p3;
     int steps;
+    int controlPoints;
+    int radius = 5;
+    int lineWidth = 2;
 
-    std::cin >> steps >> p1.x >> p1.y >> p2.x >> p2.y >> p3.x >> p3.y;
+    std::vector<Vector2> points;
 
-    std::vector<Vector2> points = GenerateBezierCurvePoints(p1, p2, p3, steps);
-
-    for (Vector2 &point : points)
+    std::cin >> steps;
+    if (steps < 0)
     {
-        std::cout << point.x << " " << point.y << std::endl;
+        std::cout << "Invalid number of steps, please try again." << std::endl;
+        std::cin >> steps;
+    }
+
+    std::cin >> controlPoints;
+    if (controlPoints < 3)
+    {
+        std::cout << "Control points lacking, please try again." << std::endl;
+        std::cin >> controlPoints;
+    }
+
+    for (int i = 0; i < controlPoints; i++)
+    {
+        Vector2 coords;
+        
+        std::cin >> coords.x >> coords.y;
+
+        points.push_back(coords);
     }
     
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Linear Interpolation");
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Bezier Curves");
     SetTargetFPS(60);
 
     while (!WindowShouldClose())
@@ -70,38 +84,50 @@ int main()
             CloseWindow();
         }
         BeginDrawing();
-            ClearBackground(WHITE);
-            DrawCircleV(p1, radius, BLACK);
-            Vector2 prevPoint = p1;
-            int i = 0;
-            for (Vector2 &point : points)
+            ClearBackground(BLACK);
+            int j = 0;
+            std::vector<Vector2> toCurve;
+            std::vector<Vector2> bezierPoints;
+
+            for (Vector2 &pt : points)
             {
-                Vector2 newPoint = point;
-                switch (i)
+                // Draw the points, alternating green or red.
+                if (j % 2 == 0)
                 {
-                    case 0:
-                        DrawCircleV(point, radius, RED);
-                        break;
-                    case 1:
-                        DrawCircleV(point, radius, GREEN);
-                        break;
-                    case 2:
-                        DrawCircleV(point, radius, BLUE);
-                        break;
-                    default:
-                        DrawCircleV(point, radius, BLACK);
+                    DrawCircleV(pt, radius, GREEN);
                 }
-                DrawLineEx(newPoint, prevPoint, lineWidth, BLACK);
-                prevPoint = point;
-                i += 1;
+                else
+                {
+                    DrawCircleV(pt, radius, RED);
+                }
+                
+                // Once there are three points, perform a Bezier curve on those three points.
+                toCurve.push_back(pt);
+                if (toCurve.size() == 3)
+                {
+                    bezierPoints = GenerateBezierCurvePoints(toCurve[0], toCurve[1], toCurve[2], steps);
+                    Vector2 prevPoint = bezierPoints[0];
+                    for (Vector2 &point : bezierPoints)
+                    {
+                        // Just for check to skip the first point from connecting to itself
+                        if (&prevPoint == &point)
+                        {
+                            continue;
+                        }
+                        Vector2 newPoint = point;
+                        DrawLineEx(newPoint, prevPoint, lineWidth, WHITE);
+                        prevPoint = point;
+                    }
+
+                    
+                    // Remove the first two points from the list, retain the last to make it the first point for Bezier curve of the next set of points.
+                    toCurve.erase(toCurve.begin());
+                    toCurve.erase(toCurve.begin());
+                    bezierPoints.clear();
+                }
+                j += 1;
             }
-            DrawCircleV(p3, radius, BLACK);
-            DrawLineEx(p3, prevPoint, lineWidth, BLACK);
         EndDrawing();
     }
-
-    // CloseWindow();
     return 0;
-
-
 }
