@@ -9,12 +9,22 @@
 #include <raylib.h>
 
 #include <iostream>
+#include <cmath>
 #include <vector>
 
 // Constants
 int WINDOW_WIDTH = 800;
 int WINDOW_HEIGHT = 600;
 
+float GetDistanceVector2(Vector2 point1, Vector2 point2)
+{
+    float result;
+
+    result = pow(point2.x - point1.x,2) + pow(point2.y - point1.y,2);
+    result = sqrt(result);
+
+    return result;
+}
 Vector2 Lerp(Vector2 start, Vector2 end, float scale)
 {
     Vector2 sub{end.x - start.x, end.y - start.y};
@@ -48,6 +58,8 @@ int main()
     int controlPoints;
     int radius = 5;
     int lineWidth = 2;
+
+    int indexPointMoved = -1;
 
     std::vector<Vector2> points;
 
@@ -83,6 +95,31 @@ int main()
         {
             CloseWindow();
         }
+
+        // Only selected point is moved
+        if (indexPointMoved > -1 && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+        {
+            points[indexPointMoved] = GetMousePosition();
+        } 
+        // if mouse button released indexPoint is released
+        else if (IsMouseButtonReleased && indexPointMoved != -1)
+        {
+            indexPointMoved = -1;
+        }
+        
+        // Select the point index if no point is being moved
+        if (indexPointMoved < 0)
+        {
+           for (int i = 0; i < points.size(); i++)
+            {
+                if (GetDistanceVector2(points[i],GetMousePosition()) <= 20 &&
+                    IsMouseButtonDown(MOUSE_BUTTON_LEFT)) 
+                {
+                    indexPointMoved = i;               
+                }
+            }
+        }
+           
         BeginDrawing();
             ClearBackground(BLACK);
             int j = 0;
