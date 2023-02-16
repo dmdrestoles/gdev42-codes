@@ -57,7 +57,7 @@ std::vector<int> GeneratePascal(int rows)
     return pascalRows.back();
 }
 
-void GenerateBezierCurvePoints(std::vector<Vector2> curvePoints, std::vector<Vector2> controlPoints, std::vector<int> coefs, int steps)
+void GenerateBezierCurvePoints(std::vector<Vector2>* curvePoints, std::vector<Vector2> controlPoints, std::vector<int> coefs, int steps)
 {
     // curvePoints.push_back(controlPoints[0]);
     
@@ -72,7 +72,7 @@ void GenerateBezierCurvePoints(std::vector<Vector2> curvePoints, std::vector<Vec
             pt.x += coefs[j] * controlPoints[j].x * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
             pt.y += coefs[j] * controlPoints[j].y * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
         }
-        curvePoints.push_back(pt);
+        (*curvePoints).push_back(pt);
     }
     // curvePoints.push_back(controlPoints.back());
 }
@@ -119,7 +119,8 @@ int main()
         points.push_back(coords);
     }
 
-    std::vector<int> coefs = GeneratePascal(order);
+    std::vector<int> coefs = GeneratePascal(order+1);
+    std::cout << "Coefficients: " << coefs.size() << std::endl;
     std::vector<Vector2> toCurve;
     std::vector<Vector2> curvePoints;
     
@@ -160,26 +161,31 @@ int main()
         BeginDrawing();
             ClearBackground(WHITE);
 
-            for (Vector2 &pt : points)
+            for (int i = 0; i < points.size(); i++)
             {
-                DrawCircleV(pt, radius, BLACK);
-                toCurve.push_back(pt);
+                DrawCircleV(points[i], radius, BLACK);
+                toCurve.push_back(points[i]);
 
                 if (toCurve.size() - 1 == order)
                 {
-                    GenerateBezierCurvePoints(curvePoints, toCurve, coefs, steps);
-                }
-                
-                for (int j = order; j > 0; j--)
-                {
-                    toCurve.erase(toCurve.begin());
+                    GenerateBezierCurvePoints(&curvePoints, toCurve, coefs, steps);
+                    // std::cout << "Bezier curve generated" << std::endl;
+
+                    for (int j = order; j > 0; j--)
+                    {
+                        toCurve.erase(toCurve.begin());
+                        // std::cout << "Points removed generated" << std::endl;
+                    }
                 }
             }
             
             Vector2 prevPoint = curvePoints[0];
+            // std::cout << "Previous point assigned" << std::endl;
+            // std::cout << "Curve size: " << curvePoints.size() << std::endl;
 
             for (Vector2 &point : curvePoints)
             {
+                // std::cout << "Connecting points" << std::endl;
                 // Just for check to skip the first point from connecting to itself
                 if (&prevPoint == &point)
                 {
@@ -189,6 +195,7 @@ int main()
                 DrawLineEx(newPoint, prevPoint, lineWidth, BLACK);
                 prevPoint = point;
             }
+            toCurve.clear();
             curvePoints.clear();
         EndDrawing();
     }
