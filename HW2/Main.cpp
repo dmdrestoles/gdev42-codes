@@ -1,9 +1,9 @@
 /**
  * Authors:
  * Class: GDEV 42 F
- * Date: January 30, 2023
+ * Date: February 20, 2023
  
- Code description
+ This code asks for a series of inputs and displays a parametric Bezier curve based on given input.
 **/
 
 #include <raylib.h>
@@ -25,6 +25,7 @@ float GetDistanceVector2(Vector2 point1, Vector2 point2)
 
     return result;
 }
+
 // Generate Pascal by generating rows and getting the sum of entries from previous rows (breaks at 35th row)
 std::vector<int> GeneratePascal(int rows)
 {
@@ -59,8 +60,6 @@ std::vector<int> GeneratePascal(int rows)
 
 void GenerateBezierCurvePoints(std::vector<Vector2>* curvePoints, std::vector<Vector2> controlPoints, std::vector<int> coefs, int steps)
 {
-    // curvePoints.push_back(controlPoints[0]);
-    
     float scaled = 1.0f / steps;
 
     for (int i = 0; i < steps; i++)
@@ -74,7 +73,6 @@ void GenerateBezierCurvePoints(std::vector<Vector2>* curvePoints, std::vector<Ve
         }
         (*curvePoints).push_back(pt);
     }
-    // curvePoints.push_back(controlPoints.back());
 }
 
 int main()
@@ -169,23 +167,18 @@ int main()
                 if (toCurve.size() - 1 == order)
                 {
                     GenerateBezierCurvePoints(&curvePoints, toCurve, coefs, steps);
-                    // std::cout << "Bezier curve generated" << std::endl;
 
                     for (int j = order; j > 0; j--)
                     {
                         toCurve.erase(toCurve.begin());
-                        // std::cout << "Points removed generated" << std::endl;
                     }
                 }
             }
-            
+        
             Vector2 prevPoint = curvePoints[0];
-            // std::cout << "Previous point assigned" << std::endl;
-            // std::cout << "Curve size: " << curvePoints.size() << std::endl;
 
             for (Vector2 &point : curvePoints)
             {
-                // std::cout << "Connecting points" << std::endl;
                 // Just for check to skip the first point from connecting to itself
                 if (&prevPoint == &point)
                 {
