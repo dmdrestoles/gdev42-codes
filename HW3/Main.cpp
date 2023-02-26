@@ -7,6 +7,7 @@
 **/
 
 #include <raylib.h>
+#include <raymath.h>
 
 #include <iostream>
 #include <cmath>
@@ -74,7 +75,6 @@ void GenerateBezierCurvePoints(std::vector<Vector2>* curvePoints, std::vector<Ve
         (*curvePoints).push_back(pt);
     }
 }
-
 void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vector<Vector2> controlPoints, std::vector<int> coefs, int steps)
 {
     float scaled = 1.0f / steps;
@@ -85,11 +85,13 @@ void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vecto
         
         for (int j = 0; j < coefs.size(); j++)
         {
-            pt.x += (coefs.size() + 1) * coefs[j] * controlPoints[j+1].x - controlPoints[j].x * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
-            pt.y += (coefs.size() + 1) * coefs[j] * controlPoints[j+1].y - controlPoints[j].y * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
+            pt.x += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].x - controlPoints[j].x) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
+            pt.y += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].y - controlPoints[j].y) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
         }
-        Vector2::Normalize(pt);
-        (*tangentPoints).push_back(pt);
+        std::cout << "Prenormal: " << pt.x << " " << pt.y << std::endl;
+        Vector2 normalizedPt = Vector2Normalize(pt);
+        std::cout << "Postnormal: " << normalizedPt.x << " " << normalizedPt.y << std::endl;
+        (*tangentPoints).push_back(normalizedPt);
     }
 }
 
@@ -101,7 +103,7 @@ void GenerateBezierCurveNormals(std::vector<Vector2>* tangentPoints, std::vector
 int main()
 {
     int order;
-    int steps;
+    int steps, tangentSteps;
     int controlPoints;
     int radius = 5;
     int lineWidth = 2;
@@ -122,6 +124,13 @@ int main()
     {
         std::cout << "Invalid number of steps, please try again." << std::endl;
         std::cin >> steps;
+    }
+
+    std::cin >> tangentSteps;
+    if (tangentSteps < 0)
+    {
+        std::cout << "Invalid number of steps, please try again." << std::endl;
+        std::cin >> tangentSteps;
     }
 
     std::cin >> controlPoints;
@@ -215,14 +224,18 @@ int main()
                 DrawLineEx(newPoint, prevPoint, lineWidth, BLACK);
                 prevPoint = point;
             }
+
+            // std::cout << "Number of tangent points: " << tangentPoints.size() << std::endl;
+
+            for (int i = 0; i < tangentPoints.size(); i += (steps / tangentSteps))
+            {
+                Vector2 tanPoint = Vector2Add(tangentPoints[i], curvePoints[i]);
+                Vector2 otPt = Vector2Scale(tanPoint, 2);
+                DrawLineEx(otPt, tanPoint, lineWidth, YELLOW);
+            }
             toCurve.clear();
             curvePoints.clear();
-
-            for (Vector2 &point : tangentPoints)
-            {
-                Vector2 otPt = Vector2::Scale(points, 3);
-                DrawLineEx(otPt, point, lineWidth, YELLOW);
-            }
+            tangentPoints.clear();
         EndDrawing();
     }
     return 0;
