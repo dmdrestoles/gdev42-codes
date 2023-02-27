@@ -8,6 +8,7 @@
 
 #include <raylib.h>
 #include <raymath.h>
+#include "rlgl.h"
 
 #include <iostream>
 #include <cmath>
@@ -75,7 +76,7 @@ void GenerateBezierCurvePoints(std::vector<Vector2>* curvePoints, std::vector<Ve
         (*curvePoints).push_back(pt);
     }
 }
-void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vector<Vector2> controlPoints, std::vector<int> coefs, int steps)
+void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vector<Vector2> controlPoints, std::vector<int> coefs, int steps, int order)
 {
     float scaled = 1.0f / steps;
 
@@ -85,8 +86,15 @@ void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vecto
         
         for (int j = 0; j < coefs.size(); j++)
         {
-            pt.x += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].x - controlPoints[j].x) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
-            pt.y += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].y - controlPoints[j].y) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
+            //pt.x += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].x - controlPoints[j].x) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
+            //pt.y += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].y - controlPoints[j].y) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
+            pt = Vector2Subtract(controlPoints[j + 1], controlPoints[j]);
+            pt = Vector2Scale(pt, coefs[j]);
+            pt = Vector2Scale(pt, order);
+
+            pt = Vector2Scale(pt, pow(1 - i * scaled, j));
+            pt = Vector2Scale(pt, pow(i * scaled, 1 -j ));
+
         }
         std::cout << "Prenormal: " << pt.x << " " << pt.y << std::endl;
         Vector2 normalizedPt = Vector2Normalize(pt);
@@ -95,10 +103,6 @@ void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vecto
     }
 }
 
-void GenerateBezierCurveNormals(std::vector<Vector2>* tangentPoints, std::vector<Vector2>* normalPoints)
-{
-    
-}
 
 int main()
 {
@@ -201,7 +205,7 @@ int main()
                 if (toCurve.size() - 1 == order)
                 {
                     GenerateBezierCurvePoints(&curvePoints, toCurve, coefs, steps);
-                    GenerateBezierCurveTangents(&tangentPoints, toCurve, dCoefs, steps);
+                    GenerateBezierCurveTangents(&tangentPoints, toCurve, dCoefs, steps,order);
 
                     for (int j = order; j > 0; j--)
                     {
@@ -230,8 +234,10 @@ int main()
             for (int i = 0; i < tangentPoints.size(); i += (steps / tangentSteps))
             {
                 Vector2 tanPoint = Vector2Add(tangentPoints[i], curvePoints[i]);
-                Vector2 otPt = Vector2Scale(tanPoint, 2);
+                Vector2 otPt = Vector2Scale(tanPoint, 1.2);
                 DrawLineEx(otPt, tanPoint, lineWidth, YELLOW);
+                Vector2 normalPt{tanPoint.x - (otPt.y - tanPoint.y), tanPoint.y + (otPt.x - tanPoint.x)};
+                DrawLineEx(tanPoint, normalPt,lineWidth,BLUE);
             }
             toCurve.clear();
             curvePoints.clear();
