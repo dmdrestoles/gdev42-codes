@@ -130,6 +130,19 @@ void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vecto
     }
 }
 
+void Lerp(std::vector<Vector2>* normalPoints, Vector2 start, Vector2 end, int steps)
+{
+    float scale = 1.0f / steps;
+
+    for (int i = 1; i < steps; i++)
+    {
+        Vector2 sub{ end.x - start.x, end.y - start.y };
+        Vector2 scaled{ sub.x * i * scale, sub.y * i * scale };
+        Vector2 translated{ scaled.x + start.x, scaled.y + start.y };
+
+        (*normalPoints).push_back(translated);
+    }
+}
 
 int main()
 {
@@ -193,6 +206,9 @@ int main()
     std::vector<Vector2> toCurve;
     std::vector<Vector2> curvePoints;
     std::vector<Vector2> tangentPoints;
+    std::vector<Vector2> normalPoints;
+    bool turning = false;
+    bool onNormal = false;
     
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Parametric Bezier Curves");
     SetTargetFPS(60);
@@ -282,17 +298,50 @@ int main()
                 isDrawingBall = false;
                 counter = 0;
             }
+            else if (counter >= curvePoints.size() - 2 && turning == true) {
+                isDrawingBall = false;
+                counter = 0;
+                turning = false;
+                onNormal = false;
+            }
 
             if (isDrawingBall)
             {
-                redBall.center = curvePoints[counter];
+                if (!turning) {
+                    redBall.center = curvePoints[counter];
+                }
+                else if (turning && !onNormal){
+                    counter = 0;
+                    onNormal = true;
+                }
+
+                for (int i = 1; i < tangentSteps; i++)
+                {
+                    Vector2 pointToAttach = curvePoints[i * (curvePoints.size() / tangentSteps)];
+                    float normChance = RandomFloat(0.0f, 1.0f);
+                    if (normChance <= .2f && redBall.center.x == pointToAttach.x && redBall.center.y == pointToAttach.y && !turning) {
+                        turning = true;
+                        Vector2 tanPoint = Vector2Add(Vector2Scale(tangentPoints[i], 50), pointToAttach);
+                        Vector2 normalPt{ pointToAttach.x - (tanPoint.y - pointToAttach.y), pointToAttach.y + (tanPoint.x - pointToAttach.x) };
+                        Lerp(&normalPoints, pointToAttach, normalPt, steps);
+                        break;
+                    }
+                }
+
+                if (onNormal) {
+                    redBall.center = normalPoints[counter];
+                }
+                
                 redBall.Draw();
-                counter += 1;
+                counter += 1;                
             }
 
             toCurve.clear();
             curvePoints.clear();
             tangentPoints.clear();
+            if (!turning){
+                normalPoints.clear();
+            }
         EndDrawing();
     }
     return 0;
