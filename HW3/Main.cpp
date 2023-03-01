@@ -1,9 +1,9 @@
 /**
  * Authors: Catherine Golles, Jared John Javillo, Dan Mark Restoles
  * Class: GDEV 42 F
- * Date: February 20, 2023
+ * Date: March 1, 2023
  
- This code asks for a series of inputs and displays a parametric Bezier curve based on given input.
+ This code asks for a series of inputs and displays a parametric Bezier curve, its tangents, and its normals based on given input.
 **/
 
 #include <raylib.h>
@@ -17,6 +17,25 @@
 // Constants
 int WINDOW_WIDTH = 800;
 int WINDOW_HEIGHT = 600;
+
+struct Ball
+{
+    Vector2 center;
+    float radius;
+    Color color;
+    float thresh;
+
+    void Draw()
+    {
+        DrawCircleV(center, radius, color);
+    }
+};
+
+float RandomFloat(float min, float max)
+{
+    float r = (float)rand() / (float)RAND_MAX;
+    return min + r * (max - min);
+}
 
 float GetDistanceVector2(Vector2 point1, Vector2 point2)
 {
@@ -75,8 +94,12 @@ void GenerateBezierCurvePoints(std::vector<Vector2>* curvePoints, std::vector<Ve
         
         for (int j = 0; j < coefs.size(); j++)
         {
-            pt.x += coefs[j] * controlPoints[j].x * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
-            pt.y += coefs[j] * controlPoints[j].y * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
+            Vector2 cpt{0, 0};
+            cpt = Vector2Scale(controlPoints[j], coefs[j]);
+            cpt = Vector2Scale(cpt, pow(1 - (i * scaled), coefs.size() - j - 1));
+            cpt = Vector2Scale(cpt, pow(i * scaled, j));
+
+            pt = Vector2Add(pt, cpt);
         }
         (*curvePoints).push_back(pt);
     }
@@ -89,24 +112,20 @@ void GenerateBezierCurveTangents(std::vector<Vector2>* tangentPoints, std::vecto
     {
         Vector2 pt{0, 0};
         
-        for (int j = 0; j < order-1; j++)
+        for (int j = 0; j < order; j++)
         {
             Vector2 cpt{0, 0};
-            //pt.x += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].x - controlPoints[j].x) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
-            //pt.y += (coefs.size() + 1) * coefs[j] * (controlPoints[j+1].y - controlPoints[j].y) * pow(1 - (i * scaled), coefs.size() - j - 1) * pow(i * scaled, j);
 
-            cpt = Vector2Scale(cpt, pow(1 - (i * scaled), order - j - 2));
-            cpt = Vector2Scale(cpt, pow(i * scaled, j));
             cpt = Vector2Subtract(controlPoints[j + 1], controlPoints[j]);
+            cpt = Vector2Scale(cpt, pow(1 - (i * scaled), order - j - 1));
+            cpt = Vector2Scale(cpt, pow(i * scaled, j));
             cpt = Vector2Scale(cpt, coefs[j]);
             cpt = Vector2Scale(cpt, order);
 
             pt = Vector2Add(pt, cpt);
 
         }
-        // std::cout << "Prenormal: " << pt.x << " " << pt.y << std::endl;
         Vector2 normalizedPt = Vector2Normalize(pt);
-        // std::cout << "Postnormal: " << normalizedPt.x << " " << normalizedPt.y << std::endl;
         (*tangentPoints).push_back(normalizedPt);
     }
 }
@@ -121,6 +140,13 @@ int main()
     int lineWidth = 2;
 
     int indexPointMoved = -1;
+    int counter = 0;
+    bool isDrawingBall = false;
+    bool isFlyingOut = false;
+
+    Ball redBall;
+    redBall.color = RED;
+    redBall.radius = radius * 2;
 
     std::vector<Vector2> points;
 
@@ -170,7 +196,7 @@ int main()
     
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Parametric Bezier Curves");
     SetTargetFPS(60);
-
+    
     while (!WindowShouldClose())
     {
         if (IsKeyPressed(KEY_ESCAPE))
@@ -213,7 +239,7 @@ int main()
                 if (toCurve.size() - 1 == order)
                 {
                     GenerateBezierCurvePoints(&curvePoints, toCurve, coefs, steps);
-                    GenerateBezierCurveTangents(&tangentPoints, toCurve, dCoefs, steps, order);
+                    GenerateBezierCurveTangents(&tangentPoints, toCurve, dCoefs, tangentSteps, order);
 
                     for (int j = order; j > 0; j--)
                     {
@@ -237,19 +263,33 @@ int main()
                 prevPoint = point;
             }
 
-            // std::cout << "Number of tangent points: " << tangentPoints.size() << std::endl;
-
-            for (int i = 0; i < tangentPoints.size(); i += (steps / tangentSteps))
+            for (int i = 1; i < tangentSteps; i++)
             {
-                Vector2 tanPoint = Vector2Add(tangentPoints[i], curvePoints[i]);
-                Vector2 otPt = Vector2Scale(tanPoint, 1.2);
-                DrawLineEx(otPt, tanPoint, lineWidth, YELLOW);
-                Vector2 normalPt{tanPoint.x - (otPt.y - tanPoint.y), tanPoint.y + (otPt.x - tanPoint.x)};
-                // normalPt = Vector2Normalize(normalPt);
-                // normalPt = Vector2Add(normalPt, curvePoints[i]);
-                // normalPt = Vector2Scale(normalPt, 1.2);
-                DrawLineEx(tanPoint, normalPt,lineWidth,BLUE);
+                Vector2 pointToAttach = curvePoints[i * (curvePoints.size() / tangentSteps)];
+                Vector2 tanPoint = Vector2Add(Vector2Scale(tangentPoints[i], 50), pointToAttach);
+                DrawLineEx(pointToAttach, tanPoint, lineWidth, YELLOW);
+                Vector2 normalPt{pointToAttach.x - (tanPoint.y - pointToAttach.y), pointToAttach.y + (tanPoint.x - pointToAttach.x)};
+                DrawLineEx(pointToAttach, normalPt,lineWidth,BLUE);
             }
+
+            if (IsKeyDown(KEY_SPACE))
+            {
+                isDrawingBall = true;
+                counter = 0;
+            }
+            if (counter >= curvePoints.size() - 1)
+            {
+                isDrawingBall = false;
+                counter = 0;
+            }
+
+            if (isDrawingBall)
+            {
+                redBall.center = curvePoints[counter];
+                redBall.Draw();
+                counter += 1;
+            }
+
             toCurve.clear();
             curvePoints.clear();
             tangentPoints.clear();
