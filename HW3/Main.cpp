@@ -161,6 +161,7 @@ int main()
     redBall.color = RED;
     redBall.radius = radius * 2;
 
+    Vector2 normalDirectionVector;
     std::vector<Vector2> points;
 
     std::cin >> order;
@@ -290,15 +291,27 @@ int main()
 
             if (IsKeyDown(KEY_SPACE))
             {
+                isDrawingBall = false;
+                counter = 0;
+                turning = false;
+                onNormal = false;
                 isDrawingBall = true;
                 counter = 0;
             }
-            if (counter >= curvePoints.size() - 1)
+            if (counter >= curvePoints.size() - 1 && !onNormal)
             {
                 isDrawingBall = false;
                 counter = 0;
             }
-            else if (counter >= curvePoints.size() - 2 && turning == true) {
+            else if (counter >= curvePoints.size() - 2 && turning == true && !onNormal) {
+                isDrawingBall = false;
+                counter = 0;
+                turning = false;
+                onNormal = false;
+            }
+            else if(onNormal && (redBall.center.x - radius <= 0 || redBall.center.x + radius >= WINDOW_WIDTH || 
+                                redBall.center.y - radius <= 0 || redBall.center.y + radius >= WINDOW_HEIGHT))
+            {
                 isDrawingBall = false;
                 counter = 0;
                 turning = false;
@@ -323,13 +336,17 @@ int main()
                         turning = true;
                         Vector2 tanPoint = Vector2Add(Vector2Scale(tangentPoints[i], 50), pointToAttach);
                         Vector2 normalPt{ pointToAttach.x - (tanPoint.y - pointToAttach.y), pointToAttach.y + (tanPoint.x - pointToAttach.x) };
-                        Lerp(&normalPoints, pointToAttach, normalPt, steps);
+
+                        normalDirectionVector = Vector2Subtract(normalPt,pointToAttach );
+                        normalDirectionVector = Vector2Normalize(normalDirectionVector);
+                        //Lerp(&normalPoints, pointToAttach, normalPt, steps);
                         break;
                     }
                 }
 
                 if (onNormal) {
-                    redBall.center = normalPoints[counter];
+                    //redBall.center = normalPoints[counter];
+                    redBall.center = Vector2Add(redBall.center, normalDirectionVector);
                 }
                 
                 redBall.Draw();
