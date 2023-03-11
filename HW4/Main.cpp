@@ -16,12 +16,16 @@
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 
+const float H_ACCEL = 5.0f;
+const float H_COEFF = 0.1f;
+const float H_OPPOSITE = 0.25;
+const float H_AIR = 3.5f;
+
 const float MAX_VEL = 5;
 const float MAX_ACCEL = 5;
 const float MAX_JUMP_ACCEL = 8;
-const float ACCEL_DECAY = 0.25;
 const int WALL_GAP = 1;
-const float gravity = 9.8f;
+const float GRAVITY = 9.8f;
 
 struct Player
 {
@@ -123,16 +127,6 @@ int main()
         {
             CloseWindow();
         }
-        
-        if (IsKeyDown(KEY_D))
-        {
-            currAccel += MAX_ACCEL / 10;
-        }
-
-        else if (IsKeyDown(KEY_A))
-        {
-            currAccel -= MAX_ACCEL / 10;
-        }
 
         if (IsKeyDown(KEY_W) && isGrounded && !isJumping)
         {
@@ -145,9 +139,35 @@ int main()
             // {
             //     vertAccel = MAX_JUMP_ACCEL;
             // }
+            std::cout << "Jumping" << std::endl;
             isGrounded = false;
             isJumping = true;
         }
+        
+        //Still Bunny hops if W is held down pls fix or not its not required
+        if (IsKeyDown(KEY_D))
+        {   
+            float accel = H_ACCEL;
+            if (isJumping)
+            {
+                accel = H_AIR;
+            }
+        
+            currAccel += accel * H_COEFF;
+        }
+
+        else if (IsKeyDown(KEY_A))
+        {
+            float accel = H_ACCEL;
+            if (isJumping)
+            {
+                accel = H_AIR;
+            }
+        
+            currAccel -= accel * H_COEFF;
+        }
+
+
 
         if (currAccel < 0.05 && currAccel > -0.05)
         {
@@ -156,12 +176,12 @@ int main()
 
         else if (currAccel > 0)
         {
-            currAccel -= ACCEL_DECAY;
+            currAccel -= H_OPPOSITE;
         }
 
         else if (currAccel < 0)
         {
-            currAccel += ACCEL_DECAY;
+            currAccel += H_OPPOSITE;
         }
 
         if (currAccel > MAX_ACCEL)
@@ -181,7 +201,7 @@ int main()
 
         else if (vertAccel < 0)
         {
-            vertAccel += ACCEL_DECAY;
+            vertAccel += H_OPPOSITE;
         }
 
         if (player.position.y > WINDOW_HEIGHT - player.height)
@@ -205,7 +225,7 @@ int main()
 
         if (player.velocity.y >= 0 && !isGrounded)
         {
-            if (vertAccel <= gravity)
+            if (vertAccel <= GRAVITY)
             {
                 vertAccel += 0.5;
             }
@@ -221,7 +241,7 @@ int main()
             player.velocity.y = -MAX_VEL;
         }
 
-        std::cout << player.velocity.x << " " << player.velocity.y << std::endl;
+
         Vector2 prevPos = {player.position.x, player.position.y};
         player.color = BLUE;
 
@@ -231,32 +251,42 @@ int main()
         player.acceleration.y = vertAccel;
         player.velocity.y = player.acceleration.y;
 
-        player.position.x += player.velocity.x;
-        player.position.y += player.velocity.y;
-        
         for (auto &wall : walls)
         {
             if (CheckCollision(player, wall))
             {
-                if (player.velocity.x > 0 || player.velocity.x < 0)
+                if (player.position.y < wall.position.y - (wall.height/2) && player.velocity.y >= 0)
                 {
+                    player.velocity.y = 0;
+                    player.acceleration.y = 0;
+                    player.position.y = prevPos.y ;
+                    isGrounded = true;
+                    isJumping = false;
+                }
+
+                if(player.position.x < wall.position.x - (wall.width/2) && player.velocity.x > 0)   
+                {
+                    player.velocity.x = 0;
                     player.position.x = prevPos.x;
                 }
-                if (player.velocity.y < 0)
+
+                if(player.position.x - (player.width/2) > wall.position.x + (wall.width/2) && player.velocity.x < 0)
                 {
-                    player.velocity.y = 0;
-                }
-                if (player.velocity.y > 0)
-                {
-                    player.acceleration.y = 0;
-                    player.velocity.y = 0;
-                    player.position.y = prevPos.y;
+                    player.velocity.x = 0;
+                    player.position.x = prevPos.x;
                 }
             }
         }
+
+        player.position.x += player.velocity.x;
+        player.position.y += player.velocity.y;
+
+        
+
         
         BeginDrawing();
             ClearBackground(WHITE);
+            std::cout << "position: " << player.position.x << " " << player.position.y << std::endl;
             DrawRectangle(player.position.x - (player.width/2), player.position.y - (player.height/2), player.width, player.height, player.color);
 
             for (auto &wall : walls)
