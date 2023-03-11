@@ -264,14 +264,15 @@ int main()
                     isJumping = false;
                 }
 
-                if(player.position.x < wall.position.x - (wall.width/2) && player.velocity.x > 0)   
+                else if(player.position.x < wall.position.x - (wall.width/2) && player.velocity.x > 0)   
                 {
                     player.velocity.x = 0;
                     player.position.x = prevPos.x;
                 }
 
-                if(player.position.x - (player.width/2) > wall.position.x + (wall.width/2) && player.velocity.x < 0)
+                else if(player.position.x - (player.width/2) > wall.position.x  && player.velocity.x < 0)
                 {
+                    std::cout << "Colliding" << std::endl;
                     player.velocity.x = 0;
                     player.position.x = prevPos.x;
                 }
@@ -286,7 +287,6 @@ int main()
         
         BeginDrawing();
             ClearBackground(WHITE);
-            std::cout << "position: " << player.position.x << " " << player.position.y << std::endl;
             DrawRectangle(player.position.x - (player.width/2), player.position.y - (player.height/2), player.width, player.height, player.color);
 
             for (auto &wall : walls)
