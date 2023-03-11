@@ -20,10 +20,12 @@ const float H_ACCEL = 5.0f;
 const float H_COEFF = 0.1f;
 const float H_OPPOSITE = 0.25;
 const float H_AIR = 3.5f;
+const float MAX_H_VEL = 5.0f;
+const float MIN_H_VEL = 0.05f;
 
 const float MAX_VEL = 5;
 const float MAX_ACCEL = 5;
-const float MAX_JUMP_ACCEL = 8;
+const float V_ACCEL = 8.0f;
 const int WALL_GAP = 1;
 const float GRAVITY = 9.8f;
 
@@ -130,7 +132,7 @@ int main()
 
         if (IsKeyDown(KEY_W) && isGrounded && !isJumping)
         {
-            vertAccel = -MAX_JUMP_ACCEL;
+            vertAccel = -V_ACCEL;
             // if (vertAccel <= MAX_JUMP_ACCEL)
             // {
             //     vertAccel -= MAX_JUMP_ACCEL/5;
@@ -169,7 +171,7 @@ int main()
 
 
 
-        if (currAccel < 0.05 && currAccel > -0.05)
+        if (currAccel < MIN_H_VEL && currAccel > -MIN_H_VEL)
         {
             currAccel = 0;
         }
@@ -184,14 +186,14 @@ int main()
             currAccel += H_OPPOSITE;
         }
 
-        if (currAccel > MAX_ACCEL)
+        if (currAccel > MAX_H_VEL)
         {
-            currAccel = MAX_ACCEL;
+            currAccel = MAX_H_VEL;
         }
 
-        else if (currAccel < -MAX_ACCEL)
+        else if (currAccel < -MAX_H_VEL)
         {
-            currAccel = -MAX_ACCEL;
+            currAccel = -MAX_H_VEL;
         }
 
         if (vertAccel < 0.05 && vertAccel > -0.05)
