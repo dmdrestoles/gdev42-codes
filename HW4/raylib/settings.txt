@@ -1,0 +1,13 @@
+const float H_ACCEL = 5.0f;
+const float H_COEFF = 0.1f;
+const float H_OPPOSITE = 5.0f;
+const float H_AIR = 3.5f;
+const float MAX_H_VEL = 5.0f;
+const float MIN_H_VEL = 0.05f;
+const int V_SAFE = 20;
+const int V_HOLD = 20;
+const float CUT_V_VEL = 8.0f;
+const float MAX_V_VEL = 10.0f;
+const float V_ACCEL = 20.0f;
+const float GAP = 1;
+const float GRAVITY = 2.2f;

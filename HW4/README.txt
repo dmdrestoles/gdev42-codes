@@ -1,0 +1,14 @@
+Line Arrangement for settings.txt
+H_ACCEL
+H_COEFF
+H_OPPOSITE
+H_AIR
+MAX_H_VEL
+MIN_H_VEL
+V_SAFE
+V_HOLD
+CUT_V_VEL
+MAX_V_VEL
+V_ACCEL
+GAP
+GRAVITY
