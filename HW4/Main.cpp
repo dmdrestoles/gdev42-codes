@@ -11,6 +11,8 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <fstream>
+#include <string>
 
 #include <settings.txt>
 
@@ -77,13 +79,12 @@ int main()
 
     // Declaration of game
     Player player;
-    player.position = Vector2{WINDOW_WIDTH/2, WINDOW_HEIGHT/2};
-    player.width = 24;
-    player.height = 32;
     player.color = BLUE;
     player.velocity = Vector2{0,0};
     player.acceleration = Vector2{0,0};
     player.hitObstacle = 0;
+    player.width = 24;
+    player.height = 32;
 
     float currAccel = 0.0f;
     float vertAccel = 0.0f;
@@ -95,26 +96,94 @@ int main()
     bool isJumping = false;
     bool isJumpKeyReleased = false;
     bool isOnPlatform = false;
+    std::ifstream constantsFile("settings.txt");
 
+  std::string line;
+    float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
+        CUT_V_VEL, MAX_V_VEL, V_ACCEL, GAP, GRAVITY;
+    int V_SAFE, V_HOLD;
+
+    while (std::getline(constantsFile, line)) {
+        std::string variable, value;
+        std::size_t equalsPos = line.find('=');
+        variable = line.substr(0, equalsPos);
+        value = line.substr(equalsPos + 1);
+
+        if (variable == "H_ACCEL") {
+        H_ACCEL = std::stof(value);
+        } else if (variable == "H_COEFF") {
+        H_COEFF = std::stof(value);
+        } else if (variable == "H_OPPOSITE") {
+        H_OPPOSITE = std::stof(value);
+        } else if (variable == "H_AIR") {
+        H_AIR = std::stof(value);
+        } else if (variable == "MAX_H_VEL") {
+        MAX_H_VEL = std::stof(value);
+        } else if (variable == "MIN_H_VEL") {
+        MIN_H_VEL = std::stof(value);
+        } else if (variable == "V_SAFE") {
+        V_SAFE = std::stoi(value);
+        } else if (variable == "V_HOLD") {
+        V_HOLD = std::stoi(value);
+        } else if (variable == "CUT_V_VEL") {
+        CUT_V_VEL = std::stof(value);
+        } else if (variable == "MAX_V_VEL") {
+        MAX_V_VEL = std::stof(value);
+        } else if (variable == "V_ACCEL") {
+        V_ACCEL = std::stof(value);
+        } else if (variable == "GAP") {
+        GAP = std::stof(value);
+        } else if (variable == "GRAVITY") {
+        GRAVITY = std::stof(value);
+        }
+    }
+
+     // Read from text file
+    std::ifstream inputFile("level.txt");
+    if (!inputFile.is_open())
+    {
+        std::cout << "Error opening file." << std::endl;
+        return 0;
+    }
+
+    // Read player position from first line
+    float playerX, playerY;
+    inputFile >> playerX >> playerY;
+
+    // Player dimensions
+    const int playerWidth = 24;
+    const int playerHeight = 32;
+
+    // Instantiate player
+    player.position = Vector2{playerX,playerY};
+
+    // Read number of walls from second line
+    int numWalls;
+    inputFile >> numWalls;
+
+    // Instantiate walls
     std::vector<Wall> walls;
-    Wall wall1, wall2, wall3;
-    
-    wall1.position = Vector2{50, 500};
-    wall1.width = 50;
-    wall1.height = 200;
-    wall1.color = RED;
-    wall2.position = Vector2{650, 500};
-    wall2.width = 50;
-    wall2.height = 200;
-    wall2.color = RED;
-    wall3.position = Vector2{350, 350};
-    wall3.width = 150;
-    wall3.height = 50;
-    wall3.color = RED;
+    for (int i = 0; i < numWalls; i++)
+    {
+        // Read wall position and dimensions
+        float wallX, wallY;
+        float wallWidth, wallHeight;
+        inputFile >> wallX >> wallY >> wallWidth >> wallHeight;
 
-    walls.push_back(wall1);
-    walls.push_back(wall2);
-    walls.push_back(wall3);
+        // Instantiate wall
+        Wall wall;
+        wall.position = {wallX, wallY};
+        wall.width = wallWidth;
+        wall.height = wallHeight;
+        wall.rect = {wallX, wallY, wallWidth, wallHeight};
+        wall.color = RED;
+
+        // Add wall to walls vector
+        walls.push_back(wall);
+    }
+
+    // Close input file
+    inputFile.close();
 
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
     SetTargetFPS(60);
@@ -217,16 +286,17 @@ int main()
         int x = 0;
         for (auto &wall : walls)
         {
-                if (player.position.y + player.height >= wall.position.y &&
-                    player.position.y < wall.position.y + 2.0f &&
+                if (player.position.y + player.height >= wall.position.y -GAP&&
+                    player.position.y < wall.position.y + 5.0f &&
                     player.position.x + player.width > wall.position.x &&
                     player.position.x < wall.position.x + wall.width &&
-                    !isOnPlatform)
+                    (!IsKeyPressed(KEY_W) && framesHoldingJump >= 0))
                 {
-                    std::cout << "TOPSIDE " << x << " : " << isJumpKeyReleased  << std::endl;
+                    //std::cout << "TOPSIDE " << x << " : " << isJumpKeyReleased  << std::endl;
                     player.position.y = wall.position.y - player.height - GAP;
                     vertAccel = 0;
                     player.velocity.y = 0;
+                    framesHoldingJump = 0;
                     isJumpKeyReleased = false;
                     isGrounded = true;
                     isOnPlatform = true;
@@ -240,8 +310,9 @@ int main()
                 {
                     player.position.y = wall.position.y + wall.height + GAP;
                     isJumpKeyReleased = true;
+                    vertAccel = GRAVITY;
                     isGrounded = false;
-                    std::cout << "BOTTOMSIDE " << x << "|" << isJumpKeyReleased << std::endl;
+                    //std::cout << "BOTTOMSIDE " << x << "|" << isJumpKeyReleased << std::endl;
                 }
                 // check for collision with left side of wall
                 else if (player.position.x + player.width > wall.position.x &&
@@ -252,7 +323,7 @@ int main()
                     // player hits the left side of the wall
                     player.velocity.x = 0;
                     player.position.x = wall.position.x - player.width - GAP;
-                    std::cout << "LEFTSIDE " << x << "|" << isJumpKeyReleased << std::endl;
+                    //std::cout << "LEFTSIDE " << x << "|" << isJumpKeyReleased << std::endl;
                 }
                 
                 // check for collision with right side of wall
@@ -264,15 +335,15 @@ int main()
                     // player hits the right side of the wall
                     player.velocity.x = 0;
                     player.position.x = wall.position.x + wall.width + GAP;
-                    std::cout << "RIGHT " << x << "|" << isJumpKeyReleased << std::endl;
+                    //std::cout << "RIGHT " << x << "|" << isJumpKeyReleased << std::endl;
                 }
-                    else if (isOnPlatform && player.position.y + player.height < wall.position.y)
+                else if (isOnPlatform && player.position.y + player.height < wall.position.y)
                 {
                     // Player is on top of the wall, but not colliding with it
                     isGrounded = false;
                     isOnPlatform = false;
                 }
-
+            std::cout << "WALL: " << x << "|" << isOnPlatform<< std::endl;
             x++;
         }
 
@@ -313,7 +384,7 @@ int main()
             player.velocity.x = -MAX_H_VEL;
         }
 
-        std::cout << "Velocity: " << player.velocity.x << " | " << player.velocity.y << std::endl;
+        //std::cout << "Velocity: " << player.velocity.x << " | " << player.velocity.y << std::endl;
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
 
