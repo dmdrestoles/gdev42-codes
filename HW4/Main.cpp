@@ -204,7 +204,6 @@ int main()
         if (IsKeyDown(KEY_W) && framesHoldingJump < V_HOLD && !isJumpKeyReleased)
         {
             vertAccel = -V_ACCEL;
-            //std::cout << "Jumping | " << vertAccel << std::endl;
             isGrounded = false;
             framesHoldingJump += 1;
         } 
@@ -292,7 +291,6 @@ int main()
                     player.position.x < wall.position.x + wall.width &&
                     (!IsKeyPressed(KEY_W) && framesHoldingJump >= 0))
                 {
-                    //std::cout << "TOPSIDE " << x << " : " << isJumpKeyReleased  << std::endl;
                     player.position.y = wall.position.y - player.height - GAP;
                     vertAccel = 0;
                     player.velocity.y = 0;
@@ -312,7 +310,6 @@ int main()
                     isJumpKeyReleased = true;
                     vertAccel = GRAVITY;
                     isGrounded = false;
-                    //std::cout << "BOTTOMSIDE " << x << "|" << isJumpKeyReleased << std::endl;
                 }
                 // check for collision with left side of wall
                 else if (player.position.x + player.width > wall.position.x &&
@@ -323,7 +320,6 @@ int main()
                     // player hits the left side of the wall
                     player.velocity.x = 0;
                     player.position.x = wall.position.x - player.width - GAP;
-                    //std::cout << "LEFTSIDE " << x << "|" << isJumpKeyReleased << std::endl;
                 }
                 
                 // check for collision with right side of wall
@@ -335,7 +331,6 @@ int main()
                     // player hits the right side of the wall
                     player.velocity.x = 0;
                     player.position.x = wall.position.x + wall.width + GAP;
-                    //std::cout << "RIGHT " << x << "|" << isJumpKeyReleased << std::endl;
                 }
                 else if (isOnPlatform && player.position.y + player.height < wall.position.y)
                 {
@@ -343,7 +338,6 @@ int main()
                     isGrounded = false;
                     isOnPlatform = false;
                 }
-            std::cout << "WALL: " << x << "|" << isOnPlatform<< std::endl;
             x++;
         }
 
@@ -362,7 +356,6 @@ int main()
 
         player.acceleration.y = vertAccel;
         player.velocity.y += player.acceleration.y;
-        //std::cout << "player.velocity.y += : " << player.velocity.y << std::endl;
         
         if (player.velocity.y > MAX_V_VEL)
         {
@@ -384,7 +377,6 @@ int main()
             player.velocity.x = -MAX_H_VEL;
         }
 
-        //std::cout << "Velocity: " << player.velocity.x << " | " << player.velocity.y << std::endl;
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
 
