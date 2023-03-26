@@ -119,15 +119,15 @@ void CameraWindow(Camera2D &camera, Player &player, Vector4 camEdges)
         int push = leftEdge - player.position.x;
         camera.target.x -= push;
     }
-    else if (player.position.x > rightEdge)
+    else if (player.position.x > rightEdge - player.width)
     {
-        int push = player.position.x - rightEdge;
+        int push = player.position.x - (rightEdge - player.width);
         camera.target.x += push;
     }
 
-    if (player.position.y > bottomEdge)
+    if (player.position.y > bottomEdge - player.height)
     {
-        int push = player.position.y - bottomEdge;
+        int push = player.position.y - (bottomEdge - player.height);
         camera.target.y += push;
     }
     if (player.position.y < topEdge)
