@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <fstream>
 #include <string>
+#include <sstream>
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -136,19 +137,22 @@ void CameraWindow(Camera2D &camera, Player &player, Vector4 camEdges)
         camera.target.y -= push;
     }
 
-    std::cout << leftEdge << " " << rightEdge << " " << topEdge << " " << bottomEdge << std::endl;
+    //std::cout << leftEdge << " " << rightEdge << " " << topEdge << " " << bottomEdge << std::endl;
 }
 
 void CameraPlatformSnapping(Camera2D &camera, Player &player, Vector4 camEdges, Vector2 driftFactor, bool isGrounded)
 {
     float driftY = 0;
+    float driftX = 0;
 
     CameraWindow(camera, player, camEdges);
     
     if (isGrounded)
     {
         driftY = clamp(player.position.y - camera.target.y, -driftFactor.y, driftFactor.y);
+        driftX = clamp(player.position.x - camera.target.x, -driftFactor.x, driftFactor.x);
         camera.target.y += driftY;
+        camera.target.x += driftX;
     }
 }
 
@@ -191,7 +195,9 @@ int main()
   std::string line;
     float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
         CUT_V_VEL, MAX_V_VEL, V_ACCEL, GAP, GRAVITY;
-    int V_SAFE, V_HOLD;
+    int V_SAFE, V_HOLD, CAM_TYPE;
+    Vector2 CAM_DRIFT;
+    Vector4 cameraBounds;
 
     while (std::getline(constantsFile, line)) {
         std::string variable, value;
@@ -200,32 +206,41 @@ int main()
         value = line.substr(equalsPos + 1);
 
         if (variable == "H_ACCEL") {
-        H_ACCEL = std::stof(value);
+            H_ACCEL = std::stof(value);
         } else if (variable == "H_COEFF") {
-        H_COEFF = std::stof(value);
+            H_COEFF = std::stof(value);
         } else if (variable == "H_OPPOSITE") {
-        H_OPPOSITE = std::stof(value);
+            H_OPPOSITE = std::stof(value);
         } else if (variable == "H_AIR") {
-        H_AIR = std::stof(value);
+            H_AIR = std::stof(value);
         } else if (variable == "MAX_H_VEL") {
-        MAX_H_VEL = std::stof(value);
+            MAX_H_VEL = std::stof(value);
         } else if (variable == "MIN_H_VEL") {
-        MIN_H_VEL = std::stof(value);
+            MIN_H_VEL = std::stof(value);
         } else if (variable == "V_SAFE") {
-        V_SAFE = std::stoi(value);
+            V_SAFE = std::stoi(value);
         } else if (variable == "V_HOLD") {
-        V_HOLD = std::stoi(value);
+            V_HOLD = std::stoi(value);
         } else if (variable == "CUT_V_VEL") {
-        CUT_V_VEL = std::stof(value);
+            CUT_V_VEL = std::stof(value);
         } else if (variable == "MAX_V_VEL") {
-        MAX_V_VEL = std::stof(value);
+            MAX_V_VEL = std::stof(value);
         } else if (variable == "V_ACCEL") {
-        V_ACCEL = std::stof(value);
+            V_ACCEL = std::stof(value);
         } else if (variable == "GAP") {
-        GAP = std::stof(value);
+            GAP = std::stof(value);
         } else if (variable == "GRAVITY") {
-        GRAVITY = std::stof(value);
+            GRAVITY = std::stof(value);
+        } else if(variable == "CAM_TYPE"){
+            CAM_TYPE = std::stoi(value);
+        } else if(variable == "CAM_DRIFT"){
+            std::istringstream iss(value);
+            iss >> CAM_DRIFT.x >> CAM_DRIFT.y;
+        } else if (variable == "CAM_EDGES"){
+            std::istringstream iss(value);
+            iss >> cameraBounds.x >> cameraBounds.y >> cameraBounds.z >> cameraBounds.w;
         }
+        
     }
 
      // Read from text file
@@ -278,15 +293,15 @@ int main()
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
     SetTargetFPS(60);
     Camera2D camera = {0};
-    Vector4 cameraBounds {200, 200, 500, 500}; // {UL.x, UL.y DR.x, DR.y}, CAMERA_EDGES, requires from file, might require new computations due to absolute position on edge snapping and relative position on camera window beyond
+    //Vector4 cameraBounds {200, 200, 500, 500}; // {UL.x, UL.y DR.x, DR.y}, CAMERA_EDGES, requires from file, might require new computations due to absolute position on edge snapping and relative position on camera window beyond
     camera.target = {player.position.x, player.position.y};
     camera.offset = {WINDOW_WIDTH/2, WINDOW_HEIGHT/2};
     int cameraWidth = cameraBounds.z - cameraBounds.x;
     int cameraHeight = cameraBounds.w - cameraBounds.y;
 
-    Vector2 CAM_DRIFT{2, 2};    // {DriftX, DriftY}, CAM_DRIFT requires from file
+    //Vector2 CAM_DRIFT{2, 2};    // {DriftX, DriftY}, CAM_DRIFT requires from file
 
-    int toggleCamera = 0; // 0 = position lock; 1 = edge snap; 2 = camera window; 3 = position snap; 4 = platform snap, CAM_TYPE, requires from file
+    int toggleCamera = CAM_TYPE; // 0 = position lock; 1 = edge snap; 2 = camera window; 3 = position snap; 4 = platform snap, CAM_TYPE, requires from file
 
     while (!WindowShouldClose())
     {
@@ -311,7 +326,7 @@ int main()
         {
             toggleCamera = 4;
         }
-
+        //std::cout << toggleCamera << std::endl;
         // Sets the camera
         if (toggleCamera == 0)
         {
@@ -418,6 +433,7 @@ int main()
         player.color = BLUE;
 
         int x = 0;
+        isOnPlatform = false;
         for (auto &wall : walls)
         {
                 if (player.position.y + player.height >= wall.position.y -GAP&&
@@ -455,6 +471,7 @@ int main()
                     // player hits the left side of the wall
                     player.velocity.x = 0;
                     player.position.x = wall.position.x - player.width - GAP;
+                    isOnPlatform = false;
                 }
                 
                 // check for collision with right side of wall
@@ -466,19 +483,19 @@ int main()
                     // player hits the right side of the wall
                     player.velocity.x = 0;
                     player.position.x = wall.position.x + wall.width + GAP;
-                }
-                else if (isOnPlatform && player.position.y + player.height < wall.position.y)
-                {
-                    // Player is on top of the wall, but not colliding with it
-                    isGrounded = false;
                     isOnPlatform = false;
                 }
             x++;
         }
-
-        if (player.position.y + player.height >= WINDOW_HEIGHT )
+        if (!isOnPlatform && isGrounded)
         {
-            player.position.y = WINDOW_HEIGHT - player.height - GAP;
+            isGrounded = false;
+        }
+        
+
+        if (player.position.y + player.height >= WINDOW_HEIGHT && !IsKeyPressed(KEY_W))
+        {
+            player.position.y = WINDOW_HEIGHT - player.height;
             player.velocity.y = 0;
             player.acceleration.y = 0;
             vertAccel = 0;
