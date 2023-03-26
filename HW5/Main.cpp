@@ -20,7 +20,6 @@ const int WINDOW_HEIGHT = 600;
 
 struct Player
 {
-    Rectangle rect;
     Vector2 position;
     int width, height;
     Color color;
@@ -70,6 +69,99 @@ bool CheckCollision(Player &p1, Wall &w)
     //     return true;
     // }
     // return false;
+}
+
+// Camera 0, follows player position by default
+void CameraPositionLock(Camera2D &camera, Player &player)
+{
+    camera.target.x = player.position.x;
+    camera.target.y = player.position.y;
+}
+
+// Camera 1, follows player position until it reaches specific points
+void CameraEdgeSnapping(Camera2D &camera,  Player &player, Vector4 camEdges)
+{
+    camera.target.x = player.position.x;
+    camera.target.y = player.position.y;
+
+    if (camera.target.x <= camEdges.x)
+    {
+        camera.target.x = camEdges.x;
+    }
+    else if(camera.target.x >= camEdges.z)
+    {
+        camera.target.x = camEdges.z;
+    }
+
+    if (camera.target.y <= camEdges.y)
+    {
+        camera.target.y = camEdges.y;
+    }
+    else if (camera.target.y >= camEdges.w)
+    {
+        camera.target.y = camEdges.w;
+    }
+}
+
+// Camera 2, camera does not move until player moves on a certain distance away from a window
+void CameraWindow(Camera2D &camera, Player &player, Vector4 camEdges)
+{
+    int cameraWidth = camEdges.z - camEdges.x;
+    int cameraHeight = camEdges.w - camEdges.y;
+
+    float leftEdge = camera.target.x - (cameraWidth/2);
+    float rightEdge = camera.target.x + (cameraWidth/2);
+    float topEdge = camera.target.y - (cameraHeight/2);
+    float bottomEdge = camera.target.y + (cameraHeight/2);
+
+    if (player.position.x < leftEdge)
+    {
+        int push = leftEdge - player.position.x;
+        camera.target.x -= push;
+    }
+    else if (player.position.x > rightEdge)
+    {
+        int push = player.position.x - rightEdge;
+        camera.target.x += push;
+    }
+
+    if (player.position.y > bottomEdge)
+    {
+        int push = player.position.y - bottomEdge;
+        camera.target.y += push;
+    }
+    if (player.position.y < topEdge)
+    {
+        int push = topEdge - player.position.y; 
+        camera.target.y -= push;
+    }
+
+    std::cout << leftEdge << " " << rightEdge << " " << topEdge << " " << bottomEdge << std::endl;
+}
+
+void CameraPlatformSnapping(Camera2D &camera, Player &player, Vector4 camEdges, Vector2 driftFactor, bool isGrounded)
+{
+    float driftY = 0;
+
+    CameraWindow(camera, player, camEdges);
+    
+    if (isGrounded)
+    {
+        driftY = clamp(player.position.y - camera.target.y, -driftFactor.y, driftFactor.y);
+        camera.target.y += driftY;
+    }
+}
+
+void CameraPositionSnapping(Camera2D &camera, Player &player, Vector4 camEdges, Vector2 driftFactor)
+{
+    float driftX, driftY = 0;
+
+    CameraWindow(camera, player, camEdges);
+    
+    driftX = clamp(player.position.x - camera.target.x, -driftFactor.x, driftFactor.x);
+    driftY = clamp(player.position.y - camera.target.y, -driftFactor.y, driftFactor.y);
+    camera.target.x += driftX;
+    camera.target.y += driftY;
 }
 
 int main()
@@ -186,55 +278,62 @@ int main()
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
     SetTargetFPS(60);
     Camera2D camera = {0};
-    Vector4 cameraBounds {100, 100, 100, 100}; // {-100, 100, -50, 50}
+    Vector4 cameraBounds {200, 200, 500, 500}; // {UL.x, UL.y DR.x, DR.y}, CAMERA_EDGES, requires from file, might require new computations due to absolute position on edge snapping and relative position on camera window beyond
     camera.target = {player.position.x, player.position.y};
     camera.offset = {WINDOW_WIDTH/2, WINDOW_HEIGHT/2};
+    int cameraWidth = cameraBounds.z - cameraBounds.x;
+    int cameraHeight = cameraBounds.w - cameraBounds.y;
 
-    float driftX, driftY;
-    driftX = 0;
-    driftY = 0;
-    float CAM_DRIFT = 2;
+    Vector2 CAM_DRIFT{2, 2};    // {DriftX, DriftY}, CAM_DRIFT requires from file
+
+    int toggleCamera = 0; // 0 = position lock; 1 = edge snap; 2 = camera window; 3 = position snap; 4 = platform snap, CAM_TYPE, requires from file
 
     while (!WindowShouldClose())
     {
-        float leftEdge = camera.target.x - cameraBounds.x;
-        float rightEdge = camera.target.x + cameraBounds.y;
-        float topEdge = camera.target.y - cameraBounds.z;
-        float bottomEdge = camera.target.y + cameraBounds.w;
-
-        if (player.position.x < leftEdge)
+        // Toggles on keyboard
+        if (IsKeyPressed(KEY_ONE))
         {
-            int push = leftEdge - player.position.x;
-            camera.target.x -= push;
+            toggleCamera = 0;
         }
-        else if (player.position.x > rightEdge)
+        else if (IsKeyPressed(KEY_TWO))
         {
-            int push = player.position.x - rightEdge;
-            camera.target.x += push;
+            toggleCamera = 1;
         }
-
-        if (player.position.y > bottomEdge)
+        else if (IsKeyPressed(KEY_THREE))
         {
-            int push = player.position.y - bottomEdge;
-            camera.target.y += push;
+            toggleCamera = 2;
         }
-        else if (player.position.y < topEdge)
+        else if (IsKeyPressed(KEY_FOUR))
         {
-            int push = topEdge - player.position.y; 
-            camera.target.y -= push;
+            toggleCamera = 3;
+        }
+        else if (IsKeyPressed(KEY_FIVE))
+        {
+            toggleCamera = 4;
         }
 
-        if (camera.target.x <= 0)
+        // Sets the camera
+        if (toggleCamera == 0)
         {
-            camera.target.x = 0;
+            CameraPositionLock(camera, player);
         }
-        else if(camera.target.x >= WINDOW_WIDTH)
+        else if (toggleCamera == 1)
         {
-            camera.target.x = WINDOW_WIDTH;
+            CameraEdgeSnapping(camera, player, cameraBounds);
         }
-
+        else if (toggleCamera == 2)
+        {
+            CameraWindow(camera, player, cameraBounds);
+        }
+        else if (toggleCamera == 3)
+        {
+            CameraPositionSnapping(camera, player, cameraBounds, CAM_DRIFT);
+        }
+        else if (toggleCamera == 4)
+        {
+            CameraPlatformSnapping(camera, player, cameraBounds, CAM_DRIFT, isGrounded);
+        }
         
-        driftX = clamp(player.position.x - camera.target.x, -CAM_DRIFT, CAM_DRIFT);
         camera.zoom = 1.0f;
 
         if (IsKeyPressed(KEY_ESCAPE))
@@ -258,8 +357,8 @@ int main()
             isJumpKeyReleased = false;
             framesHoldingJump = 0;
             framesNotGrounded = 0;
-            driftY = clamp(player.position.y - camera.target.y, -CAM_DRIFT, CAM_DRIFT);
-            camera.target.y += driftY;
+            // driftY = clamp(player.position.y - camera.target.y, -CAM_DRIFT, CAM_DRIFT);
+            // camera.target.y += driftY;
         }
         else if (framesNotGrounded >= V_SAFE && vertAccel <= GRAVITY)
         {
@@ -314,8 +413,6 @@ int main()
         {
             currAccel = -MAX_H_VEL;
         }
-        
-        // camera.target.x += driftX;
 
         Vector2 prevPos = {player.position.x, player.position.y};
         player.color = BLUE;
@@ -418,11 +515,11 @@ int main()
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
 
-        
         BeginDrawing();
             ClearBackground(WHITE);
             BeginMode2D(camera);
-            DrawRectangle(player.position.x , player.position.y, player.width, player.height, player.color);
+            DrawRectangle(player.position.x, player.position.y, player.width, player.height, player.color);
+            DrawRectangleLines(camera.target.x - (cameraWidth/2), camera.target.y - (cameraHeight/2), cameraWidth, cameraHeight, GREEN);
 
             for (auto &wall : walls)
             {
