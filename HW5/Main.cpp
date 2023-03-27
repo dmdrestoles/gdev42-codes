@@ -143,16 +143,13 @@ void CameraWindow(Camera2D &camera, Player &player, Vector4 camEdges)
 void CameraPlatformSnapping(Camera2D &camera, Player &player, Vector4 camEdges, Vector2 driftFactor, bool isGrounded)
 {
     float driftY = 0;
-    float driftX = 0;
 
     CameraWindow(camera, player, camEdges);
     
     if (isGrounded)
     {
         driftY = clamp(player.position.y - camera.target.y, -driftFactor.y, driftFactor.y);
-        driftX = clamp(player.position.x - camera.target.x, -driftFactor.x, driftFactor.x);
         camera.target.y += driftY;
-        camera.target.x += driftX;
     }
 }
 
