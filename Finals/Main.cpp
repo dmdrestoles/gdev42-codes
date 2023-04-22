@@ -7,6 +7,7 @@
 **/
 
 #include <raylib.h>
+#include <raymath.h>
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -35,6 +36,11 @@ struct Wall
     int width, height;
     Rectangle rect;
     Color color;
+};
+
+struct Projectile
+{
+
 };
 
 int clamp(int val, int min, int max)
@@ -450,18 +456,18 @@ int main()
                     isGrounded = true;
                     isOnPlatform = true;
                 }
-                // else if(
-                //         player.position.y  >= wall.position.y + wall.height/2 &&
-                //         player.position.y -5.0f < wall.position.y + wall.height + 2 &&
-                //         player.position.x + player.width > wall.position.x &&
-                //         player.position.x < wall.position.x + wall.width
-                //     )
-                // {
-                //     player.position.y = wall.position.y + wall.height + GAP;
-                //     isJumpKeyReleased = true;
-                //     vertAccel = GRAVITY;
-                //     isGrounded = false;
-                // }
+                else if(
+                        player.position.y  >= wall.position.y + wall.height/2 &&
+                        player.position.y -5.0f < wall.position.y + wall.height + 2 &&
+                        player.position.x + player.width > wall.position.x &&
+                        player.position.x < wall.position.x + wall.width
+                    )
+                {
+                    player.position.y = wall.position.y + wall.height + GAP;
+                    isJumpKeyReleased = true;
+                    vertAccel = GRAVITY;
+                    isGrounded = false;
+                }
                 // check for collision with left side of wall
                 else if (player.position.x + player.width > wall.position.x &&
                     player.position.x < wall.position.x &&
@@ -532,10 +538,16 @@ int main()
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
 
+        std::cout << "Mouse position: " << GetMousePosition().x << " " << GetMousePosition().y << std::endl;
+        std::cout << "Player position: " << player.position.x << " " << player.position.y << std::endl;
+        Vector2 linePos = Vector2Subtract(camera.target, GetMousePosition());
+        std::cout << "Line position: " << linePos.x << " " << linePos.y << std::endl;
+
         BeginDrawing();
             ClearBackground(WHITE);
             BeginMode2D(camera);
             DrawRectangle(player.position.x, player.position.y, player.width, player.height, player.color);
+            DrawLineEx(player.position, linePos, 3, GREEN);
             // DrawRectangleLines(camera.target.x - (cameraWidth/2), camera.target.y - (cameraHeight/2), cameraWidth, cameraHeight, GREEN);
 
             for (auto &wall : walls)
