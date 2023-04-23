@@ -7,6 +7,7 @@
 **/
 
 #include <raylib.h>
+#include <raymath.h>
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -15,10 +16,10 @@
 #include <string>
 #include <sstream>
 
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
+const int WINDOW_WIDTH = 1280;
+const int WINDOW_HEIGHT = 720;
 
-
+float aimLength = 10;
 struct Player
 {
     Vector2 position;
@@ -35,6 +36,17 @@ struct Wall
     int width, height;
     Rectangle rect;
     Color color;
+};
+
+struct Projectile
+{
+    Vector2 position;
+    Vector2 velocity;
+    Vector2 acceleration;
+    float radius;
+    Color c;
+    float timeToDisappear;
+    float uptime;
 };
 
 int clamp(int val, int min, int max)
@@ -163,6 +175,16 @@ void CameraPositionSnapping(Camera2D &camera, Player &player, Vector4 camEdges, 
     driftY = clamp(player.position.y - camera.target.y, -driftFactor.y, driftFactor.y);
     camera.target.x += driftX;
     camera.target.y += driftY;
+}
+
+Projectile GenerateProjectile()
+{
+    Projectile p;
+    p.radius = 10.0f;
+    p.uptime = 0.0f;
+    p.timeToDisappear = 3.0f;
+
+    return p;
 }
 
 int main()
@@ -296,9 +318,13 @@ int main()
     int cameraWidth = cameraBounds.z - cameraBounds.x;
     int cameraHeight = cameraBounds.w - cameraBounds.y;
 
+    int directionalFace = 0; // 0 = right, 1 = up, 2 = left, 3 = down
+
     //Vector2 CAM_DRIFT{2, 2};    // {DriftX, DriftY}, CAM_DRIFT requires from file
 
     int toggleCamera = CAM_TYPE; // 0 = position lock; 1 = edge snap; 2 = camera window; 3 = position snap; 4 = platform snap, CAM_TYPE, requires from file
+
+    std::vector<Projectile>* projectiles;
 
     while (!WindowShouldClose())
     {
@@ -358,7 +384,7 @@ int main()
             framesNotGrounded++;
         }
         
-        if (IsKeyDown(KEY_W) && framesHoldingJump < V_HOLD && !isJumpKeyReleased)
+        if (IsKeyDown(KEY_SPACE) && framesHoldingJump < V_HOLD && !isJumpKeyReleased)
         {
             vertAccel = -V_ACCEL;
             isGrounded = false;
@@ -376,7 +402,7 @@ int main()
         {
             vertAccel = GRAVITY;
         }
-        if(IsKeyReleased(KEY_W))
+        if(IsKeyReleased(KEY_SPACE))
         {
             vertAccel = 0;
             isJumpKeyReleased = true;
@@ -391,7 +417,8 @@ int main()
                 accel = H_AIR;
             }
         
-            currAccel += accel ;
+            currAccel += accel;
+            directionalFace = 0;
         }
 
         else if (IsKeyDown(KEY_A))
@@ -402,7 +429,8 @@ int main()
                 accel = H_AIR;
             }
         
-            currAccel -= accel ;
+            currAccel -= accel;
+            directionalFace = 2;
         }
 
         else if (player.velocity.x >= MIN_H_VEL && player.velocity.x <= -MIN_H_VEL)
@@ -426,6 +454,17 @@ int main()
             currAccel = -MAX_H_VEL;
         }
 
+        if (IsKeyDown(KEY_W))
+        {
+            directionalFace = 1;
+        }
+
+        if (IsKeyDown(KEY_S))
+        {
+            directionalFace = 3;
+            currAccel = 0;
+        }
+
         Vector2 prevPos = {player.position.x, player.position.y};
         player.color = BLUE;
 
@@ -433,11 +472,14 @@ int main()
         isOnPlatform = false;
         for (auto &wall : walls)
         {
-                if (player.position.y + player.height >= wall.position.y -GAP&&
+                if (
+                    player.position.y + player.height >= wall.position.y -GAP&&
                     player.position.y < wall.position.y + 5.0f &&
                     player.position.x + player.width > wall.position.x &&
                     player.position.x < wall.position.x + wall.width &&
-                    (!IsKeyPressed(KEY_W) && framesHoldingJump >= 0))
+                    (!IsKeyPressed(KEY_SPACE) && framesHoldingJump >= 0)
+                    // framesNotGrounded >= V_SAFE
+                    )
                 {
                     player.position.y = wall.position.y - player.height - GAP;
                     vertAccel = 0;
@@ -529,11 +571,37 @@ int main()
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
 
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            GenerateProjectile();
+        }
+
         BeginDrawing();
             ClearBackground(WHITE);
             BeginMode2D(camera);
             DrawRectangle(player.position.x, player.position.y, player.width, player.height, player.color);
-            DrawRectangleLines(camera.target.x - (cameraWidth/2), camera.target.y - (cameraHeight/2), cameraWidth, cameraHeight, GREEN);
+
+            if (directionalFace == 0)
+            {
+                Vector2 rightEdge = Vector2{player.position.x + player.width, player.position.y + (player.height/2)};
+                DrawLineEx(rightEdge, Vector2Add(rightEdge, Vector2{aimLength, 0}), 3, GREEN);
+            }
+            else if (directionalFace == 1)
+            {
+                Vector2 topEdge = Vector2{player.position.x + (player.width / 2), player.position.y};
+                DrawLineEx(topEdge, Vector2Add(topEdge, Vector2{0, -aimLength}), 3, GREEN);
+            }
+            else if (directionalFace == 2)
+            {
+                Vector2 leftEdge = Vector2{player.position.x, player.position.y + (player.height/2)};
+                DrawLineEx(leftEdge, Vector2Add(leftEdge, Vector2{-aimLength, 0}), 3, GREEN);
+            }
+            else if (directionalFace == 3)
+            {
+                Vector2 bottomEdge = Vector2{player.position.x + (player.width/2), player.position.y + player.height};
+                DrawLineEx(bottomEdge, Vector2Add(bottomEdge, Vector2{0, aimLength}), 3, GREEN);
+            }
+            // DrawRectangleLines(camera.target.x - (cameraWidth/2), camera.target.y - (cameraHeight/2), cameraWidth, cameraHeight, GREEN);
 
             for (auto &wall : walls)
             {
