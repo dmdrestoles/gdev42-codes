@@ -2,6 +2,10 @@
 #include <raymath.h>
 #include <vector>
 
+float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
+    CUT_V_VEL, MAX_V_VEL, V_ACCEL, GAP, GRAVITY;
+int V_SAFE, V_HOLD, CAM_TYPE;
+
 struct Player
 {
     Vector2 position;
@@ -116,7 +120,7 @@ struct Enemy
 
 };
 
-int clamp(int val, int min, int max)
+float clamp(float val, float min, float max)
 {
 	if (val < min)
 	{
@@ -147,7 +151,7 @@ Vector2 CircleToRectangleCollisionVector(Projectile &p, Enemy &e)
 {
 	Vector2 clampedPos = { 
 		clamp(p.position.x, e.position.x, e.position.x + e.width), 
-		clamp(p.position.y, e.position.y + e.height, e.position.y) 
+		clamp(p.position.y, e.position.y, e.position.y + e.height) 
 	};
 
 	return Vector2Subtract(p.position, clampedPos);

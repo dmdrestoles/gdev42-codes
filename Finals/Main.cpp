@@ -19,9 +19,6 @@ const int WINDOW_HEIGHT = 600;
 const int MAX_PLAYER_PROJECTILES = 1;
 int TARGET_FPS = 60;
 
-float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
-    CUT_V_VEL, MAX_V_VEL, V_ACCEL, GAP, GRAVITY;
-int V_SAFE, V_HOLD, CAM_TYPE;
 Vector2 CAM_DRIFT;
 
 float aimLength = 10;
@@ -640,6 +637,15 @@ int main()
                     p.isActive = false;
                     projectiles.erase(projectiles.begin() + i);
                 }
+
+                for (auto &enemy : enemies)
+                {
+                    if (IsCircleToRectangleColliding(p, enemy))
+                    {
+                        std::cout << "Hit!" << std::endl;
+                        enemy.isDead = true;
+                    }
+                }
             }
             accumulator -= TIMESTEP;
         }
@@ -699,7 +705,10 @@ int main()
 
             for (auto &enemy : enemies)
             {
-                DrawRectangle(enemy.position.x, enemy.position.y, enemy.width, enemy.height, enemy.color);
+                if (!enemy.isDead)
+                {
+                    DrawRectangle(enemy.position.x, enemy.position.y, enemy.width, enemy.height, enemy.color);
+                }
             }
             EndMode2D();
         EndDrawing();
