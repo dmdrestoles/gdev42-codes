@@ -22,7 +22,28 @@ int TARGET_FPS = 60;
 Vector2 CAM_DRIFT;
 
 float aimLength = 10;
+// Declaration of game
+Player player;
 
+float currAccel = 0.0f;
+float vertAccel = 0.0f;
+
+int framesHoldingJump = 0;
+int framesNotGrounded = 0;
+
+bool isGrounded = false;
+bool isJumping = false;
+bool isJumpKeyReleased = false;
+bool isOnPlatform = false;
+std::ifstream constantsFile("settings.txt");
+
+std::string line;
+
+Vector4 cameraBounds;
+
+std::vector<Projectile> projectiles;
+std::vector<Projectile> enemyProjectiles;
+std::vector<Enemy> enemies;
 // Camera 0, follows player position by default
 void CameraPositionLock(Camera2D &camera, Player &player)
 {
@@ -203,32 +224,84 @@ void DrawAimOrientation(Player &player)
     }
 }
 
-int main()
+void Reset()
 {
-    // Declaration of game
-    Player player;
+    std::cout << "Resetting" << std::endl;
     player.color = BLUE;
     player.velocity = Vector2{0,0};
     player.acceleration = Vector2{0,0};
     player.hitObstacle = 0;
     player.width = 24;
     player.height = 32;
+    player.orientation = 0;
+    
+    projectiles.clear();
+    enemyProjectiles.clear();
+    enemies.clear();
 
-    float currAccel = 0.0f;
-    float vertAccel = 0.0f;
+    // Read from Level text file
+    std::ifstream inputFile("level.txt");
+    if (!inputFile.is_open())
+    {
+        std::cout << "Error opening file." << std::endl;
+    }
 
-    int framesHoldingJump = 0;
-    int framesNotGrounded = 0;
+    // Read player position from first line
+    float playerX, playerY;
+    inputFile >> playerX >> playerY;
 
-    bool isGrounded = false;
-    bool isJumping = false;
-    bool isJumpKeyReleased = false;
-    bool isOnPlatform = false;
-    std::ifstream constantsFile("settings.txt");
 
-    std::string line;
+    // Instantiate player
+    player.position = Vector2{playerX,playerY};
 
-    Vector4 cameraBounds;
+    // Close input file
+    inputFile.close();
+
+        // Read from enemy file
+    std::ifstream enemyFile("enemy.txt");
+    if (!enemyFile.is_open())
+    {
+        std::cout << "Error enemy opening file." << std::endl;
+    }
+    // Read number of walls from second line
+    int numEnemies;
+    enemyFile >> numEnemies;
+
+    // Instantiate Enemies
+    for (int i = 0; i < numEnemies; i++)
+    {
+        // Read wall position and dimensions
+        float enemyX, enemyY;
+        float enemyWidth, enemyHeight;
+        float pStartX, pStartY;
+        float pEndX, pEndY;
+        enemyFile >> enemyX >> enemyY >> enemyWidth >> enemyHeight >> pStartX >> pStartY >> pEndX >> pEndY;
+
+        // Instantiate wall
+        Enemy enemy;
+        enemy.position = {enemyX, enemyY};
+        enemy.width = enemyWidth;
+        enemy.height = enemyHeight;
+        enemy.color = BLACK;
+        enemy.start = {pStartX, pStartY};
+        enemy.end = {pEndX, pEndY};
+
+        // Add wall to walls vector
+        enemies.push_back(enemy);
+    }
+
+    // Close input file
+    enemyFile.close();
+}
+
+int main()
+{
+    player.color = BLUE;
+    player.velocity = Vector2{0,0};
+    player.acceleration = Vector2{0,0};
+    player.hitObstacle = 0;
+    player.width = 24;
+    player.height = 32;
 
     while (std::getline(constantsFile, line)) {
         std::string variable, value;
@@ -332,7 +405,6 @@ int main()
     enemyFile >> numEnemies;
 
     // Instantiate Enemies
-    std::vector<Enemy> enemies;
     for (int i = 0; i < numEnemies; i++)
     {
         // Read wall position and dimensions
@@ -376,8 +448,6 @@ int main()
     //Vector2 CAM_DRIFT{2, 2};    // {DriftX, DriftY}, CAM_DRIFT requires from file
 
     int toggleCamera = CAM_TYPE; // 0 = position lock; 1 = edge snap; 2 = camera window; 3 = position snap; 4 = platform snap, CAM_TYPE, requires from file
-
-    std::vector<Projectile> projectiles;
 
     while (!WindowShouldClose())
     {
@@ -459,6 +529,11 @@ int main()
         {
             vertAccel = 0;
             isJumpKeyReleased = true;
+        }
+
+        if(IsKeyReleased(KEY_R))
+        {
+            Reset();
         }
         
         //Still Bunny hops if W is held down pls fix or not its not required
@@ -647,12 +722,38 @@ int main()
                     }
                 }
             }
+
+            for (int i = 0; i < enemyProjectiles.size(); i++)
+            {
+                Projectile &p = enemyProjectiles[i];
+
+                if (p.isActive)
+                {
+                    p.uptime += TIMESTEP;
+                    p.position = Vector2Add(p.position, p.velocity);
+                }
+
+                if (p.uptime >= p.timeToDisappear)
+                {
+                    p.isActive = false;
+                    enemyProjectiles.erase(enemyProjectiles.begin() + i);
+                }
+
+                if (IsCircleToRectangleColliding(p, player))
+                {
+                    std::cout << "Hit! Player" << std::endl;
+                    Reset();
+                }
+            }
             accumulator -= TIMESTEP;
         }
 
         //Enemy Movements
         for (auto &enemy : enemies)
         {
+            if (!enemy.isDead)
+            {
+                            
             float level = abs(player.position.y - enemy.position.y);
             if (Vector2Distance(player.position ,enemy.position) < 200 && level < 30 && !enemy.isStopped )
             {
@@ -671,11 +772,25 @@ int main()
             {
                 enemy.acceleration.x = 0;
                 enemy.velocity.x = 0;
+
+                enemy.currentTime = GetTime();
+                enemy.elapsedTime = enemy.currentTime - enemy.previousTime;
+
+                // Check if the desired time interval has elapsed
+                if (enemy.elapsedTime >= enemy.interval)
+                {
+                    // Call the function to run every second
+                    enemy.Shoot(player, enemyProjectiles);
+
+                    // Update previous time to current time
+                    enemy.previousTime = enemy.currentTime;
+                }
             }
 
             //std::cout << "enemy: " << enemy.isStopped << std::endl;
             //std::cout << "level: " << level << std::endl;
             //std::cout << "distance: " << Vector2Distance(player.position ,enemy.position) << std::endl;
+            }
         }
 
         BeginDrawing();
@@ -690,6 +805,15 @@ int main()
             }
 
             for (Projectile &p : projectiles)
+            {
+                if (p.isActive)
+                {
+                    // std::cout << "Drawing projectile!" << std::endl;
+                    DrawCircleV(p.position, p.radius, p.color);
+                }
+            }
+
+            for (Projectile &p : enemyProjectiles)
             {
                 if (p.isActive)
                 {

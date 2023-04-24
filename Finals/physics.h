@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include <raymath.h>
+#include <iostream>
 #include <vector>
 
 float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
@@ -44,11 +45,19 @@ struct Enemy
     int width, height;
     bool isDead = false;
     bool isStopped = false;
+    bool isFiring = false;
+
     Color color;
     Vector2 velocity;
     Vector2 acceleration;
     Vector2 start;
     Vector2 end;
+
+    //for Shooting
+    double currentTime = GetTime();
+    double previousTime = GetTime();
+    double elapsedTime = 0.0;
+    double interval = 1.0; // 1 second
 
     void MoveEnemy(float accel)
     {
@@ -118,6 +127,32 @@ struct Enemy
         
     }
 
+    void Shoot(Player &player, std::vector<Projectile> &projectiles)
+    {
+        Projectile p;
+        p.radius = 3.0f;
+        p.uptime = 0.0f;
+        p.timeToDisappear = 0.5f;
+        p.isActive = true;
+        p.color = BLACK;
+        p.position = {position.x, position.y + 10.0f};
+        float velocity = 10.0f;
+
+        float direction = position.x - player.position.x;
+
+        if (direction > 0)
+        {
+            p.velocity = Vector2{-velocity, 0.0f};
+        }
+        else 
+        {
+            p.velocity = Vector2{velocity, 0.0f};
+        }
+
+        projectiles.push_back(p);
+        std::cout << "Enemy Shooting " << projectiles.size() << " bullets!" << std::endl;
+    }
+
 };
 
 float clamp(float val, float min, float max)
@@ -147,22 +182,43 @@ bool CheckCollision(Player &p1, Wall &w)
     return false;
 }
 
-Vector2 CircleToRectangleCollisionVector(Projectile &p, Enemy &e)
+Vector2 CircleToRectangleCollisionVector(Projectile &proj, Enemy &e)
 {
 	Vector2 clampedPos = { 
-		clamp(p.position.x, e.position.x, e.position.x + e.width), 
-		clamp(p.position.y, e.position.y, e.position.y + e.height) 
+		clamp(proj.position.x, e.position.x, e.position.x + e.width), 
+		clamp(proj.position.y, e.position.y, e.position.y + e.height) 
 	};
 
-	return Vector2Subtract(p.position, clampedPos);
+	return Vector2Subtract(proj.position, clampedPos);
+}
+
+Vector2 CircleToRectangleCollisionVector(Projectile &proj, Player &p)
+{
+	Vector2 clampedPos = { 
+		clamp(proj.position.x, p.position.x, p.position.x + p.width), 
+		clamp(proj.position.y, p.position.y, p.position.y + p.height) 
+	};
+
+	return Vector2Subtract(proj.position, clampedPos);
 }
 
 //Checks if a circle object is colliding with a rectangle
-bool IsCircleToRectangleColliding(Projectile &p, Enemy &e)
+bool IsCircleToRectangleColliding(Projectile &proj, Enemy &e)
 {
-	Vector2 collisionVector = CircleToRectangleCollisionVector(p, e);
+	Vector2 collisionVector = CircleToRectangleCollisionVector(proj, e);
 
-	if (Vector2DotProduct(collisionVector, collisionVector) <= pow(p.radius, 2))
+	if (Vector2DotProduct(collisionVector, collisionVector) <= pow(proj.radius, 2))
+	{
+		return true;
+	}
+	return false;
+}
+
+bool IsCircleToRectangleColliding(Projectile &proj, Player &p)
+{
+	Vector2 collisionVector = CircleToRectangleCollisionVector(proj, p);
+
+	if (Vector2DotProduct(collisionVector, collisionVector) <= pow(proj.radius, 2))
 	{
 		return true;
 	}
