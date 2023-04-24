@@ -1,9 +1,7 @@
 /**
- * Authors: Dan Mark Restoles
+ * Authors: Dan Mark Restoles, Jared Javillo, Catherine Golles
  * Class: GDEV 42 F
- * Date: February 20, 2023
- 
- This code outputs the derivative equation given a polynomial order and number of points.
+ * SHOOTY SHOOTY BANG BANG
 **/
 
 #include <raylib.h>
@@ -16,8 +14,8 @@
 #include <string>
 #include <sstream>
 
-const int WINDOW_WIDTH = 1280;
-const int WINDOW_HEIGHT = 720;
+const int WINDOW_WIDTH = 800;
+const int WINDOW_HEIGHT = 600;
 
 float aimLength = 10;
 struct Player
@@ -472,14 +470,11 @@ int main()
         isOnPlatform = false;
         for (auto &wall : walls)
         {
-                if (
-                    player.position.y + player.height >= wall.position.y -GAP&&
+                if (player.position.y + player.height >= wall.position.y -GAP&&
                     player.position.y < wall.position.y + 5.0f &&
                     player.position.x + player.width > wall.position.x &&
                     player.position.x < wall.position.x + wall.width &&
-                    (!IsKeyPressed(KEY_SPACE) && framesHoldingJump >= 0)
-                    // framesNotGrounded >= V_SAFE
-                    )
+                    (!IsKeyPressed(KEY_SPACE) && framesHoldingJump >= 0))
                 {
                     player.position.y = wall.position.y - player.height - GAP;
                     vertAccel = 0;
@@ -488,9 +483,10 @@ int main()
                     isJumpKeyReleased = false;
                     isGrounded = true;
                     isOnPlatform = true;
+                    std::cout << "TOP WALL COLL" << std::endl;
                 }
                 else if(
-                        player.position.y  >= wall.position.y + wall.height/2 &&
+                        player.position.y  >= wall.position.y + wall.height &&
                         player.position.y -5.0f < wall.position.y + wall.height + 2 &&
                         player.position.x + player.width > wall.position.x &&
                         player.position.x < wall.position.x + wall.width
@@ -500,17 +496,20 @@ int main()
                     isJumpKeyReleased = true;
                     vertAccel = GRAVITY;
                     isGrounded = false;
+                    std::cout << "BOTT WALL COLL" << std::endl;
                 }
                 // check for collision with left side of wall
                 else if (player.position.x + player.width > wall.position.x &&
-                    player.position.x < wall.position.x &&
-                    player.position.y + player.height > wall.position.y &&
-                    player.position.y < wall.position.y + wall.height)
+                         player.position.x < wall.position.x &&
+                         player.position.y + player.height > wall.position.y &&
+                         player.position.y < wall.position.y + wall.height)
                 {
                     // player hits the left side of the wall
                     player.velocity.x = 0;
+                    currAccel = 0;
                     player.position.x = wall.position.x - player.width - GAP;
                     isOnPlatform = false;
+                    std::cout << "LEFT WALL COLL" << std::endl;
                 }
                 
                 // check for collision with right side of wall
@@ -521,8 +520,10 @@ int main()
                 {
                     // player hits the right side of the wall
                     player.velocity.x = 0;
+                    currAccel = 0;
                     player.position.x = wall.position.x + wall.width + GAP;
                     isOnPlatform = false;
+                    std::cout << "RIGHT WALL COLL" << std::endl;
                 }
             x++;
         }
@@ -532,7 +533,7 @@ int main()
         }
         
 
-        if (player.position.y + player.height >= WINDOW_HEIGHT && !IsKeyPressed(KEY_W))
+        if (player.position.y + player.height >= WINDOW_HEIGHT && !IsKeyPressed(KEY_SPACE))
         {
             player.position.y = WINDOW_HEIGHT - player.height;
             player.velocity.y = 0;
