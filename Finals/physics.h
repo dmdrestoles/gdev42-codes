@@ -34,6 +34,88 @@ struct Projectile
     bool isActive;
 };
 
+struct Enemy
+{
+    Vector2 position;
+    int width, height;
+    bool isDead = false;
+    bool isStopped = false;
+    Color color;
+    Vector2 velocity;
+    Vector2 acceleration;
+    Vector2 start;
+    Vector2 end;
+
+    void MoveEnemy(float accel)
+    {
+        acceleration.x = accel;
+        velocity.x += acceleration.x;
+
+        acceleration.y = 0.f;
+        velocity.y += acceleration.y;
+        
+        if (velocity.y > MAX_V_VEL * 0.5)
+        {
+            velocity.y = MAX_V_VEL * 0.5;
+        }
+
+        if (velocity.y < -CUT_V_VEL * 0.5)
+        {
+            velocity.y = -CUT_V_VEL * 0.5;
+        }
+
+        if (velocity.x > MAX_H_VEL * 0.5)
+        {
+            velocity.x = MAX_H_VEL * 0.5;
+        }
+
+        if (velocity.x < -MAX_H_VEL * 0.5)
+        {
+            velocity.x = -MAX_H_VEL * 0.5;
+        }
+
+        position.y += velocity.y;
+        position.x += velocity.x;
+    }
+
+    void Patrol()
+    {
+        float distance = Vector2Distance(start, end); // Calculate the distance between start and end points
+
+        // Check if the enemy has reached the end point
+        if (Vector2Distance(position, end) <= 1.0f)
+        {
+            // Swap start and end points
+            Vector2 temp = start;
+            start = end;
+            end = temp;
+        }
+
+        // Calculate the direction vector from current position to end point
+        Vector2 direction = Vector2Normalize(Vector2Subtract(end, position));
+
+        // Update acceleration based on direction and desired speed
+        acceleration = Vector2Scale(direction, H_ACCEL);
+
+        // Call MoveEnemy function to update position based on acceleration and velocity
+        MoveEnemy(acceleration.x);
+    }
+
+    void StopStart()
+    {
+        if (isStopped)
+        {
+            isStopped = false;
+        }
+        else
+        {
+            isStopped = true;
+        }
+        
+    }
+
+};
+
 int clamp(int val, int min, int max)
 {
 	if (val < min)
@@ -61,29 +143,24 @@ bool CheckCollision(Player &p1, Wall &w)
     return false;
 }
 
-// Vector2 CircleToRectangleCollisionVector(Projectile &p, RectObject &rect)
-// {
-// 	Vector2 clampedPos = { 
-// 		clamp(c1.center.x, rect.bottomLeftPixel.x, rect.bottomLeftPixel.x + rect.width), 
-// 		clamp(c1.center.y, rect.bottomLeftPixel.y, rect.bottomLeftPixel.y + rect.height) 
-// 	};
+Vector2 CircleToRectangleCollisionVector(Projectile &p, Enemy &e)
+{
+	Vector2 clampedPos = { 
+		clamp(p.position.x, e.position.x, e.position.x + e.width), 
+		clamp(p.position.y, e.position.y + e.height, e.position.y) 
+	};
 
-// 	return VectorSubtract(c1.center, clampedPos);
-// }
+	return Vector2Subtract(p.position, clampedPos);
+}
 
-// //Checks if a circle object is colliding with a rectangle
-// bool IsCircleToRectangleColliding(CircleObject &c1, RectObject &rect)
-// {
-// 	Vector2 clampedPos = { 
-// 		clamp(c1.center.x, rect.bottomLeftPixel.x, rect.bottomLeftPixel.x + rect.width), 
-// 		clamp(c1.center.y, rect.bottomLeftPixel.y, rect.bottomLeftPixel.y + rect.height) 
-// 	};
+//Checks if a circle object is colliding with a rectangle
+bool IsCircleToRectangleColliding(Projectile &p, Enemy &e)
+{
+	Vector2 collisionVector = CircleToRectangleCollisionVector(p, e);
 
-// 	Vector2 collisionVector = CircleToRectangleCollisionVector(c1, rect);
-
-// 	if (DotProduct(collisionVector, collisionVector) <= pow(c1.radius, 2))
-// 	{
-// 		return true;
-// 	}
-// 	return false;
-// }
+	if (Vector2DotProduct(collisionVector, collisionVector) <= pow(p.radius, 2))
+	{
+		return true;
+	}
+	return false;
+}
