@@ -16,16 +16,20 @@
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
+const int MAX_PLAYER_PROJECTILES = 1;
+int TARGET_FPS = 60;
 
 float aimLength = 10;
 struct Player
 {
     Vector2 position;
-    int width, height;
-    Color color;
     Vector2 velocity;
     Vector2 acceleration;
+    Vector2 aim;
+    int width, height;
+    Color color;
     int hitObstacle;
+    int orientation;
 };
 
 struct Wall
@@ -42,9 +46,10 @@ struct Projectile
     Vector2 velocity;
     Vector2 acceleration;
     float radius;
-    Color c;
+    Color color;
     float timeToDisappear;
     float uptime;
+    bool isActive;
 };
 
 int clamp(int val, int min, int max)
@@ -175,14 +180,91 @@ void CameraPositionSnapping(Camera2D &camera, Player &player, Vector4 camEdges, 
     camera.target.y += driftY;
 }
 
-Projectile GenerateProjectile()
+void FireProjectile(Player &player, std::vector<Projectile> &projectiles)
 {
-    Projectile p;
-    p.radius = 10.0f;
-    p.uptime = 0.0f;
-    p.timeToDisappear = 3.0f;
+    if (projectiles.size() <= MAX_PLAYER_PROJECTILES)
+    {
+        Projectile p;
+        p.radius = 3.0f;
+        p.uptime = 0.0f;
+        p.timeToDisappear = 0.5f;
+        p.isActive = true;
+        p.color = BLACK;
+        p.position = player.aim;
+        float velocity = 10.0f;
 
-    return p;
+        if (player.orientation == 0)
+        {
+            p.velocity = Vector2{velocity, 0.0f};
+        }
+        else if (player.orientation == 1)
+        {
+            p.velocity = Vector2{0.0f, -velocity};
+        }
+        else if (player.orientation == 2)
+        {
+            p.velocity = Vector2{-velocity, 0.0f};
+        }
+        else if (player.orientation == 3)
+        {
+            p.velocity = Vector2{0.0f, velocity};
+        }
+        else
+        {
+            p.velocity = Vector2{0.0f, 0.0f};
+        }
+        projectiles.push_back(p);
+        std::cout << "Shooting " << projectiles.size() << " bullets!" << std::endl;
+    }
+    
+}
+
+void CheckFacingDirection(int &orientation)
+{
+    if (IsKeyPressed(KEY_D))
+    {
+        orientation = 0;
+    }
+    if (IsKeyPressed(KEY_W))
+    {
+        orientation = 1;
+    }
+    if (IsKeyPressed(KEY_A))
+    {
+        orientation = 2;
+    }
+    if (IsKeyPressed(KEY_S))
+    {
+        orientation = 3;
+    }
+}
+
+void DrawAimOrientation(Player &player)
+{
+    if (player.orientation == 0)
+    {
+        Vector2 rightEdge = Vector2{player.position.x + player.width, player.position.y + (player.height/2)};
+        player.aim = Vector2Add(rightEdge, Vector2{aimLength, 0});
+        DrawLineEx(rightEdge, player.aim, 3, GREEN);
+    }
+    else if (player.orientation == 1)
+    {
+        Vector2 topEdge = Vector2{player.position.x + (player.width / 2), player.position.y};
+        player.aim = Vector2Add(topEdge, Vector2{0, -aimLength});
+        DrawLineEx(topEdge, player.aim, 3, GREEN);
+    }
+    else if (player.orientation == 2)
+    {
+        Vector2 leftEdge = Vector2{player.position.x, player.position.y + (player.height/2)};
+        player.aim = Vector2Add(leftEdge, Vector2{-aimLength, 0});
+        DrawLineEx(leftEdge, player.aim, 3, GREEN);
+    }
+    else if (player.orientation == 3)
+    {
+        Vector2 bottomEdge = Vector2{player.position.x + (player.width/2), player.position.y + player.height};
+        player.aim = Vector2Add(bottomEdge, Vector2{0, aimLength});
+        DrawLineEx(bottomEdge, player.aim, 3, GREEN);
+    }
 }
 
 int main()
@@ -308,21 +390,25 @@ int main()
     inputFile.close();
 
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
-    SetTargetFPS(60);
+    SetTargetFPS(TARGET_FPS);
     Camera2D camera = {0};
     //Vector4 cameraBounds {200, 200, 500, 500}; // {UL.x, UL.y DR.x, DR.y}, CAMERA_EDGES, requires from file, might require new computations due to absolute position on edge snapping and relative position on camera window beyond
     camera.target = {player.position.x, player.position.y};
     camera.offset = {WINDOW_WIDTH/2, WINDOW_HEIGHT/2};
     int cameraWidth = cameraBounds.z - cameraBounds.x;
     int cameraHeight = cameraBounds.w - cameraBounds.y;
+    
+    const float TIMESTEP = 1.0f / TARGET_FPS;
+    float accumulator = 0.0f;
 
     int directionalFace = 0; // 0 = right, 1 = up, 2 = left, 3 = down
+    player.orientation = 0;
 
     //Vector2 CAM_DRIFT{2, 2};    // {DriftX, DriftY}, CAM_DRIFT requires from file
 
     int toggleCamera = CAM_TYPE; // 0 = position lock; 1 = edge snap; 2 = camera window; 3 = position snap; 4 = platform snap, CAM_TYPE, requires from file
 
-    std::vector<Projectile>* projectiles;
+    std::vector<Projectile> projectiles;
 
     while (!WindowShouldClose())
     {
@@ -416,7 +502,6 @@ int main()
             }
         
             currAccel += accel;
-            directionalFace = 0;
         }
 
         else if (IsKeyDown(KEY_A))
@@ -428,7 +513,6 @@ int main()
             }
         
             currAccel -= accel;
-            directionalFace = 2;
         }
 
         else if (player.velocity.x >= MIN_H_VEL && player.velocity.x <= -MIN_H_VEL)
@@ -452,16 +536,7 @@ int main()
             currAccel = -MAX_H_VEL;
         }
 
-        if (IsKeyDown(KEY_W))
-        {
-            directionalFace = 1;
-        }
-
-        if (IsKeyDown(KEY_S))
-        {
-            directionalFace = 3;
-            currAccel = 0;
-        }
+        CheckFacingDirection(player.orientation);
 
         Vector2 prevPos = {player.position.x, player.position.y};
         player.color = BLUE;
@@ -483,7 +558,7 @@ int main()
                     isJumpKeyReleased = false;
                     isGrounded = true;
                     isOnPlatform = true;
-                    std::cout << "TOP WALL COLL" << std::endl;
+                    // std::cout << "TOP WALL COLL" << std::endl;
                 }
                 else if(
                         player.position.y  >= wall.position.y + wall.height &&
@@ -496,7 +571,7 @@ int main()
                     isJumpKeyReleased = true;
                     vertAccel = GRAVITY;
                     isGrounded = false;
-                    std::cout << "BOTT WALL COLL" << std::endl;
+                    // std::cout << "BOTT WALL COLL" << std::endl;
                 }
                 // check for collision with left side of wall
                 else if (player.position.x + player.width > wall.position.x &&
@@ -509,7 +584,7 @@ int main()
                     currAccel = 0;
                     player.position.x = wall.position.x - player.width - GAP;
                     isOnPlatform = false;
-                    std::cout << "LEFT WALL COLL" << std::endl;
+                    // std::cout << "LEFT WALL COLL" << std::endl;
                 }
                 
                 // check for collision with right side of wall
@@ -523,7 +598,7 @@ int main()
                     currAccel = 0;
                     player.position.x = wall.position.x + wall.width + GAP;
                     isOnPlatform = false;
-                    std::cout << "RIGHT WALL COLL" << std::endl;
+                    // std::cout << "RIGHT WALL COLL" << std::endl;
                 }
             x++;
         }
@@ -572,37 +647,51 @@ int main()
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        float deltaTime = GetFrameTime();
+
+        accumulator += deltaTime;
+
+        while (accumulator >= TIMESTEP)
         {
-            GenerateProjectile();
+            for (int i = 0; i < projectiles.size(); i++)
+            {
+                Projectile &p = projectiles[i];
+
+                if (p.isActive)
+                {
+                    p.uptime += TIMESTEP;
+                    p.position = Vector2Add(p.position, p.velocity);
+                }
+
+                if (p.uptime >= p.timeToDisappear)
+                {
+                    p.isActive = false;
+                    projectiles.erase(projectiles.begin() + i);
+                }
+            }
+            accumulator -= TIMESTEP;
         }
+
 
         BeginDrawing();
             ClearBackground(WHITE);
             BeginMode2D(camera);
             DrawRectangle(player.position.x, player.position.y, player.width, player.height, player.color);
+            DrawAimOrientation(player);
+            
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            {
+                FireProjectile(player, projectiles);
+            }
 
-            if (directionalFace == 0)
+            for (Projectile &p : projectiles)
             {
-                Vector2 rightEdge = Vector2{player.position.x + player.width, player.position.y + (player.height/2)};
-                DrawLineEx(rightEdge, Vector2Add(rightEdge, Vector2{aimLength, 0}), 3, GREEN);
+                if (p.isActive)
+                {
+                    // std::cout << "Drawing projectile!" << std::endl;
+                    DrawCircleV(p.position, p.radius, p.color);
+                }
             }
-            else if (directionalFace == 1)
-            {
-                Vector2 topEdge = Vector2{player.position.x + (player.width / 2), player.position.y};
-                DrawLineEx(topEdge, Vector2Add(topEdge, Vector2{0, -aimLength}), 3, GREEN);
-            }
-            else if (directionalFace == 2)
-            {
-                Vector2 leftEdge = Vector2{player.position.x, player.position.y + (player.height/2)};
-                DrawLineEx(leftEdge, Vector2Add(leftEdge, Vector2{-aimLength, 0}), 3, GREEN);
-            }
-            else if (directionalFace == 3)
-            {
-                Vector2 bottomEdge = Vector2{player.position.x + (player.width/2), player.position.y + player.height};
-                DrawLineEx(bottomEdge, Vector2Add(bottomEdge, Vector2{0, aimLength}), 3, GREEN);
-            }
-            // DrawRectangleLines(camera.target.x - (cameraWidth/2), camera.target.y - (cameraHeight/2), cameraWidth, cameraHeight, GREEN);
 
             for (auto &wall : walls)
             {
