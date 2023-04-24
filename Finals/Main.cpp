@@ -19,6 +19,11 @@ const int WINDOW_HEIGHT = 600;
 const int MAX_PLAYER_PROJECTILES = 1;
 int TARGET_FPS = 60;
 
+float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
+    CUT_V_VEL, MAX_V_VEL, V_ACCEL, GAP, GRAVITY;
+int V_SAFE, V_HOLD, CAM_TYPE;
+Vector2 CAM_DRIFT;
+
 float aimLength = 10;
 
 // Camera 0, follows player position by default
@@ -203,7 +208,6 @@ void DrawAimOrientation(Player &player)
 
 int main()
 {
-
     // Declaration of game
     Player player;
     player.color = BLUE;
@@ -225,11 +229,8 @@ int main()
     bool isOnPlatform = false;
     std::ifstream constantsFile("settings.txt");
 
-  std::string line;
-    float H_ACCEL, H_COEFF, H_OPPOSITE, H_AIR, MAX_H_VEL, MIN_H_VEL,
-        CUT_V_VEL, MAX_V_VEL, V_ACCEL, GAP, GRAVITY;
-    int V_SAFE, V_HOLD, CAM_TYPE;
-    Vector2 CAM_DRIFT;
+    std::string line;
+
     Vector4 cameraBounds;
 
     while (std::getline(constantsFile, line)) {
@@ -276,7 +277,7 @@ int main()
         
     }
 
-     // Read from text file
+     // Read from Level text file
     std::ifstream inputFile("level.txt");
     if (!inputFile.is_open())
     {
@@ -313,7 +314,6 @@ int main()
         wall.position = {wallX, wallY};
         wall.width = wallWidth;
         wall.height = wallHeight;
-        // wall.rect = {wallX, wallY, wallWidth, wallHeight};
         wall.color = RED;
 
         // Add wall to walls vector
@@ -322,6 +322,44 @@ int main()
 
     // Close input file
     inputFile.close();
+
+    // Read from enemy file
+    std::ifstream enemyFile("enemy.txt");
+    if (!enemyFile.is_open())
+    {
+        std::cout << "Error enemy opening file." << std::endl;
+        return 0;
+    }
+    // Read number of walls from second line
+    int numEnemies;
+    enemyFile >> numEnemies;
+
+    // Instantiate Enemies
+    std::vector<Enemy> enemies;
+    for (int i = 0; i < numEnemies; i++)
+    {
+        // Read wall position and dimensions
+        float enemyX, enemyY;
+        float enemyWidth, enemyHeight;
+        float pStartX, pStartY;
+        float pEndX, pEndY;
+        enemyFile >> enemyX >> enemyY >> enemyWidth >> enemyHeight >> pStartX >> pStartY >> pEndX >> pEndY;
+
+        // Instantiate wall
+        Enemy enemy;
+        enemy.position = {enemyX, enemyY};
+        enemy.width = enemyWidth;
+        enemy.height = enemyHeight;
+        enemy.color = BLACK;
+        enemy.start = {pStartX, pStartY};
+        enemy.end = {pEndX, pEndY};
+
+        // Add wall to walls vector
+        enemies.push_back(enemy);
+    }
+
+    // Close input file
+    enemyFile.close();
 
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
     SetTargetFPS(TARGET_FPS);
@@ -606,6 +644,33 @@ int main()
             accumulator -= TIMESTEP;
         }
 
+        //Enemy Movements
+        for (auto &enemy : enemies)
+        {
+            float level = abs(player.position.y - enemy.position.y);
+            if (Vector2Distance(player.position ,enemy.position) < 200 && level < 30 && !enemy.isStopped )
+            {
+                enemy.StopStart();
+            }
+            else if (Vector2Distance(player.position ,enemy.position) >= 200 &&  enemy.isStopped)
+            {
+                enemy.StopStart();
+            }
+
+            if (!enemy.isStopped)
+            {         
+                enemy.Patrol();
+            }
+            else
+            {
+                enemy.acceleration.x = 0;
+                enemy.velocity.x = 0;
+            }
+
+            //std::cout << "enemy: " << enemy.isStopped << std::endl;
+            //std::cout << "level: " << level << std::endl;
+            //std::cout << "distance: " << Vector2Distance(player.position ,enemy.position) << std::endl;
+        }
 
         BeginDrawing();
             ClearBackground(WHITE);
@@ -630,6 +695,11 @@ int main()
             for (auto &wall : walls)
             {
                 DrawRectangle(wall.position.x, wall.position.y, wall.width, wall.height, wall.color);
+            }
+
+            for (auto &enemy : enemies)
+            {
+                DrawRectangle(enemy.position.x, enemy.position.y, enemy.width, enemy.height, enemy.color);
             }
             EndMode2D();
         EndDrawing();
