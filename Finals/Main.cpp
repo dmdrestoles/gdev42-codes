@@ -4,15 +4,15 @@
  * SHOOTY SHOOTY BANG BANG
 **/
 
-#include <raylib.h>
-#include <raymath.h>
+#include "physics.h"
+
 #include <iostream>
 #include <cmath>
-#include <vector>
 #include <algorithm>
 #include <fstream>
 #include <string>
 #include <sstream>
+
 
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
@@ -20,72 +20,6 @@ const int MAX_PLAYER_PROJECTILES = 1;
 int TARGET_FPS = 60;
 
 float aimLength = 10;
-struct Player
-{
-    Vector2 position;
-    Vector2 velocity;
-    Vector2 acceleration;
-    Vector2 aim;
-    int width, height;
-    Color color;
-    int hitObstacle;
-    int orientation;
-};
-
-struct Wall
-{
-    Vector2 position;
-    int width, height;
-    Rectangle rect;
-    Color color;
-};
-
-struct Projectile
-{
-    Vector2 position;
-    Vector2 velocity;
-    Vector2 acceleration;
-    float radius;
-    Color color;
-    float timeToDisappear;
-    float uptime;
-    bool isActive;
-};
-
-int clamp(int val, int min, int max)
-{
-	if (val < min)
-	{
-		return min;
-	}
-	else if (val > max)
-	{
-		return max;
-	}
-	return val;
-}
-
-
-bool CheckCollision(Player &p1, Wall &w)
-{
-
-    if (p1.position.x - (p1.width/2) < w.position.x + (w.width/2)  &&
-        p1.position.x + (p1.width/2)  > w.position.x - (w.width/2) &&
-        p1.position.y - (p1.height/2) < w.position.y + (w.height/2)  &&
-        p1.position.y + (p1.height/2) > w.position.y - (w.height/2)
-    ){
-        return true;
-    }
-    return false;
-    // if (p1.rect.x < w.rect.x + w.rect.width + WALL_GAP &&
-    //     p1.rect.x + p1.rect.width + WALL_GAP > w.rect.x &&
-    //     p1.rect.y < w.rect.y + w.rect.height + WALL_GAP &&
-    //     p1.rect.y + p1.rect.height + WALL_GAP > w.rect.y)
-    // {
-    //     return true;
-    // }
-    // return false;
-}
 
 // Camera 0, follows player position by default
 void CameraPositionLock(Camera2D &camera, Player &player)
