@@ -908,7 +908,6 @@ int main()
                 enemyDeadCount++;
                 if (enemyDeadCount >= enemies.size())
                 {
-                    hiscore = timerElapsed;
                     WriteHiScore();
                     Reset();
                 }
