@@ -130,13 +130,13 @@ struct Enemy
     void Shoot(Player &player, std::vector<Projectile> &projectiles)
     {
         Projectile p;
-        p.radius = 3.0f;
+        p.radius = 10.0f;
         p.uptime = 0.0f;
         p.timeToDisappear = 0.5f;
         p.isActive = true;
-        p.color = BLACK;
+        p.color = YELLOW;
         p.position = {position.x, position.y + 10.0f};
-        float velocity = 10.0f;
+        float velocity = 5.0f;
 
         float direction = position.x - player.position.x;
 

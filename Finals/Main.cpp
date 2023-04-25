@@ -27,9 +27,14 @@ Player player;
 
 float currAccel = 0.0f;
 float vertAccel = 0.0f;
+float timerTarget = 1.0f; // 1 second
+float timerElapsed = 0.0f;
 
 int framesHoldingJump = 0;
 int framesNotGrounded = 0;
+int enemyDeadCount = 0;
+
+char timerText[10];
 
 bool isGrounded = false;
 bool isJumping = false;
@@ -142,13 +147,13 @@ void FireProjectile(Player &player, std::vector<Projectile> &projectiles)
     if (projectiles.size() <= MAX_PLAYER_PROJECTILES)
     {
         Projectile p;
-        p.radius = 3.0f;
+        p.radius = 10.0f;
         p.uptime = 0.0f;
         p.timeToDisappear = 0.5f;
         p.isActive = true;
-        p.color = BLACK;
+        p.color = YELLOW;
         p.position = player.aim;
-        float velocity = 10.0f;
+        float velocity = 8.0f;
 
         if (player.orientation == 0)
         {
@@ -174,6 +179,24 @@ void FireProjectile(Player &player, std::vector<Projectile> &projectiles)
         std::cout << "Shooting " << projectiles.size() << " bullets!" << std::endl;
     }
     
+}
+
+void HandleTimer()
+{
+    // Get current time
+    float currentTime = GetTime();
+
+    // Update elapsed time
+    timerElapsed += (currentTime - GetFrameTime());
+
+    int hours = (int)timerElapsed / 3600;
+    int minutes = ((int)timerElapsed % 3600) / 60;
+    int seconds = ((int)timerElapsed % 3600) % 60;
+
+    // Format the elapsed time as a string in timer format
+    
+    sprintf(timerText, "%02d:%02d:%02d", hours, minutes, seconds);
+
 }
 
 void CheckFacingDirection(int &orientation)
@@ -234,6 +257,9 @@ void Reset()
     player.width = 24;
     player.height = 32;
     player.orientation = 0;
+    enemyDeadCount = 0;
+    timerElapsed = 0.0f;
+
     
     projectiles.clear();
     enemyProjectiles.clear();
@@ -292,6 +318,7 @@ void Reset()
 
     // Close input file
     enemyFile.close();
+    
 }
 
 int main()
@@ -589,61 +616,61 @@ int main()
         isOnPlatform = false;
         for (auto &wall : walls)
         {
-                if (player.position.y + player.height >= wall.position.y -GAP&&
-                    player.position.y < wall.position.y + 5.0f &&
+            if (player.position.y + player.height >= wall.position.y -GAP&&
+                player.position.y < wall.position.y + 5.0f &&
+                player.position.x + player.width > wall.position.x &&
+                player.position.x < wall.position.x + wall.width &&
+                (!IsKeyPressed(KEY_SPACE) && framesHoldingJump >= 0))
+            {
+                player.position.y = wall.position.y - player.height - GAP;
+                vertAccel = 0;
+                player.velocity.y = 0;
+                framesHoldingJump = 0;
+                isJumpKeyReleased = false;
+                isGrounded = true;
+                isOnPlatform = true;
+                // std::cout << "TOP WALL COLL" << std::endl;
+            }
+            else if(
+                    player.position.y  >= wall.position.y + wall.height &&
+                    player.position.y -5.0f < wall.position.y + wall.height + 2 &&
                     player.position.x + player.width > wall.position.x &&
-                    player.position.x < wall.position.x + wall.width &&
-                    (!IsKeyPressed(KEY_SPACE) && framesHoldingJump >= 0))
-                {
-                    player.position.y = wall.position.y - player.height - GAP;
-                    vertAccel = 0;
-                    player.velocity.y = 0;
-                    framesHoldingJump = 0;
-                    isJumpKeyReleased = false;
-                    isGrounded = true;
-                    isOnPlatform = true;
-                    // std::cout << "TOP WALL COLL" << std::endl;
-                }
-                else if(
-                        player.position.y  >= wall.position.y + wall.height &&
-                        player.position.y -5.0f < wall.position.y + wall.height + 2 &&
-                        player.position.x + player.width > wall.position.x &&
-                        player.position.x < wall.position.x + wall.width
-                    )
-                {
-                    player.position.y = wall.position.y + wall.height + GAP;
-                    isJumpKeyReleased = true;
-                    vertAccel = GRAVITY;
-                    isGrounded = false;
-                    // std::cout << "BOTT WALL COLL" << std::endl;
-                }
-                // check for collision with left side of wall
-                else if (player.position.x + player.width > wall.position.x &&
-                         player.position.x < wall.position.x &&
-                         player.position.y + player.height > wall.position.y &&
-                         player.position.y < wall.position.y + wall.height)
-                {
-                    // player hits the left side of the wall
-                    player.velocity.x = 0;
-                    currAccel = 0;
-                    player.position.x = wall.position.x - player.width - GAP;
-                    isOnPlatform = false;
-                    // std::cout << "LEFT WALL COLL" << std::endl;
-                }
-                
-                // check for collision with right side of wall
-                else if (player.position.x < wall.position.x + wall.width &&
-                    player.position.x + player.width > wall.position.x + wall.width &&
-                    player.position.y + player.height > wall.position.y &&
-                    player.position.y < wall.position.y + wall.height)
-                {
-                    // player hits the right side of the wall
-                    player.velocity.x = 0;
-                    currAccel = 0;
-                    player.position.x = wall.position.x + wall.width + GAP;
-                    isOnPlatform = false;
-                    // std::cout << "RIGHT WALL COLL" << std::endl;
-                }
+                    player.position.x < wall.position.x + wall.width
+                )
+            {
+                player.position.y = wall.position.y + wall.height + GAP;
+                isJumpKeyReleased = true;
+                vertAccel = GRAVITY;
+                isGrounded = false;
+                // std::cout << "BOTT WALL COLL" << std::endl;
+            }
+            // check for collision with left side of wall
+            else if (player.position.x + player.width > wall.position.x &&
+                        player.position.x < wall.position.x &&
+                        player.position.y + player.height > wall.position.y &&
+                        player.position.y < wall.position.y + wall.height)
+            {
+                // player hits the left side of the wall
+                player.velocity.x = 0;
+                currAccel = 0;
+                player.position.x = wall.position.x - player.width - GAP;
+                isOnPlatform = false;
+                // std::cout << "LEFT WALL COLL" << std::endl;
+            }
+            
+            // check for collision with right side of wall
+            else if (player.position.x < wall.position.x + wall.width &&
+                player.position.x + player.width > wall.position.x + wall.width &&
+                player.position.y + player.height > wall.position.y &&
+                player.position.y < wall.position.y + wall.height)
+            {
+                // player hits the right side of the wall
+                player.velocity.x = 0;
+                currAccel = 0;
+                player.position.x = wall.position.x + wall.width + GAP;
+                isOnPlatform = false;
+                // std::cout << "RIGHT WALL COLL" << std::endl;
+            }
             x++;
         }
         if (!isOnPlatform && isGrounded)
@@ -690,7 +717,7 @@ int main()
 
         player.position.y += player.velocity.y;
         player.position.x += player.velocity.x;
-
+        //std::cout << "Player Position: " << player.position.x << " | " << player.position.y << std::endl;
         float deltaTime = GetFrameTime();
 
         accumulator += deltaTime;
@@ -749,53 +776,99 @@ int main()
         }
 
         //Enemy Movements
+        enemyDeadCount = 0;
         for (auto &enemy : enemies)
         {
             if (!enemy.isDead)
             {
                             
-            float level = abs(player.position.y - enemy.position.y);
-            if (Vector2Distance(player.position ,enemy.position) < 200 && level < 30 && !enemy.isStopped )
-            {
-                enemy.StopStart();
-            }
-            else if (Vector2Distance(player.position ,enemy.position) >= 200 &&  enemy.isStopped)
-            {
-                enemy.StopStart();
-            }
+                float level = abs(player.position.y - enemy.position.y);
+                if (Vector2Distance(player.position ,enemy.position) < 200 && level < 30 && !enemy.isStopped )
+                {
+                    enemy.StopStart();
+                }
+                else if (Vector2Distance(player.position ,enemy.position) >= 200 &&  enemy.isStopped)
+                {
+                    enemy.StopStart();
+                }
 
-            if (!enemy.isStopped)
-            {         
-                enemy.Patrol();
+                if (!enemy.isStopped)
+                {         
+                    enemy.Patrol();
+                }
+                else
+                {
+                    enemy.acceleration.x = 0;
+                    enemy.velocity.x = 0;
+
+                    enemy.currentTime = GetTime();
+                    enemy.elapsedTime = enemy.currentTime - enemy.previousTime;
+
+                    // Check if the desired time interval has elapsed
+                    if (enemy.elapsedTime >= enemy.interval)
+                    {
+                        // Call the function to run every second
+                        enemy.Shoot(player, enemyProjectiles);
+
+                        // Update previous time to current time
+                        enemy.previousTime = enemy.currentTime;
+                    }
+                }
+
+                // Check enemy collision
+                if (player.position.y + player.height >= enemy.position.y -GAP&&
+                    player.position.y < enemy.position.y + 5.0f &&
+                    player.position.x + player.width > enemy.position.x &&
+                    player.position.x < enemy.position.x + enemy.width &&
+                    (!IsKeyPressed(KEY_SPACE) && framesHoldingJump >= 0))
+                {
+
+                    Reset();
+                }
+                else if(
+                        player.position.y  >= enemy.position.y + enemy.height &&
+                        player.position.y -5.0f < enemy.position.y + enemy.height + 2 &&
+                        player.position.x + player.width > enemy.position.x &&
+                        player.position.x < enemy.position.x + enemy.width
+                    )
+                {
+
+                    Reset();
+                }
+                // check for collision with left side of wall
+                else if (player.position.x + player.width > enemy.position.x &&
+                            player.position.x < enemy.position.x &&
+                            player.position.y + player.height > enemy.position.y &&
+                            player.position.y < enemy.position.y + enemy.height)
+                {
+                    Reset();
+                }
+                
+
+                else if (player.position.x < enemy.position.x + enemy.width &&
+                    player.position.x + player.width > enemy.position.x + enemy.width &&
+                    player.position.y + player.height > enemy.position.y &&
+                    player.position.y < enemy.position.y + enemy.height)
+                {
+                    Reset();
+                }
             }
             else
             {
-                enemy.acceleration.x = 0;
-                enemy.velocity.x = 0;
-
-                enemy.currentTime = GetTime();
-                enemy.elapsedTime = enemy.currentTime - enemy.previousTime;
-
-                // Check if the desired time interval has elapsed
-                if (enemy.elapsedTime >= enemy.interval)
+                enemyDeadCount++;
+                if (enemyDeadCount >= enemies.size())
                 {
-                    // Call the function to run every second
-                    enemy.Shoot(player, enemyProjectiles);
-
-                    // Update previous time to current time
-                    enemy.previousTime = enemy.currentTime;
+                    Reset();
                 }
-            }
-
-            //std::cout << "enemy: " << enemy.isStopped << std::endl;
-            //std::cout << "level: " << level << std::endl;
-            //std::cout << "distance: " << Vector2Distance(player.position ,enemy.position) << std::endl;
+                
             }
         }
 
+        HandleTimer();
         BeginDrawing();
             ClearBackground(WHITE);
             BeginMode2D(camera);
+
             DrawRectangle(player.position.x, player.position.y, player.width, player.height, player.color);
             DrawAimOrientation(player);
             
@@ -834,6 +907,10 @@ int main()
                     DrawRectangle(enemy.position.x, enemy.position.y, enemy.width, enemy.height, enemy.color);
                 }
             }
+
+            DrawText("Kill All Enemies", camera.target.x - 175 , camera.target.y+200, 50, BLUE);
+            DrawText(timerText, camera.target.x - 100 , camera.target.y+150, 50, BLUE);
+            
             EndMode2D();
         EndDrawing();
 
