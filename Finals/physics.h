@@ -17,6 +17,7 @@ struct Player
     Color color;
     int hitObstacle;
     int orientation;
+    Sound fireSound;
 };
 
 struct Wall

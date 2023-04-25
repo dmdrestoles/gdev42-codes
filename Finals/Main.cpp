@@ -13,7 +13,6 @@
 #include <string>
 #include <sstream>
 
-
 const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 const int MAX_PLAYER_PROJECTILES = 1;
@@ -29,18 +28,21 @@ float currAccel = 0.0f;
 float vertAccel = 0.0f;
 float timerTarget = 1.0f; // 1 second
 float timerElapsed = 0.0f;
+float hiscore = 10000.0f;
 
 int framesHoldingJump = 0;
 int framesNotGrounded = 0;
 int enemyDeadCount = 0;
 
 char timerText[10];
+char hiscoreText[10];
 
 bool isGrounded = false;
 bool isJumping = false;
 bool isJumpKeyReleased = false;
 bool isOnPlatform = false;
 std::ifstream constantsFile("settings.txt");
+std::ifstream hiscoreFile("hiscore.txt");
 
 std::string line;
 
@@ -49,6 +51,7 @@ Vector4 cameraBounds;
 std::vector<Projectile> projectiles;
 std::vector<Projectile> enemyProjectiles;
 std::vector<Enemy> enemies;
+
 // Camera 0, follows player position by default
 void CameraPositionLock(Camera2D &camera, Player &player)
 {
@@ -176,7 +179,8 @@ void FireProjectile(Player &player, std::vector<Projectile> &projectiles)
             p.velocity = Vector2{0.0f, 0.0f};
         }
         projectiles.push_back(p);
-        std::cout << "Shooting " << projectiles.size() << " bullets!" << std::endl;
+        PlaySound(player.fireSound);
+        // std::cout << "Shooting " << projectiles.size() << " bullets!" << std::endl;
     }
     
 }
@@ -197,6 +201,17 @@ void HandleTimer()
     
     sprintf(timerText, "%02d:%02d:%02d", minutes, seconds, milliseconds/10);
 
+}
+
+void HandleHiScore()
+{
+    int minutes = ((int)hiscore % 3600) / 60;
+    int seconds = ((int)hiscore % 3600) % 60;
+    int milliseconds = (int)(hiscore * 1000) % 1000; 
+
+    // Format the elapsed time as a string in timer format
+    
+    sprintf(hiscoreText, "%02d:%02d:%02d", minutes, seconds, milliseconds/10);
 }
 
 void CheckFacingDirection(int &orientation)
@@ -259,7 +274,6 @@ void Reset()
     player.orientation = 0;
     enemyDeadCount = 0;
     timerElapsed = 0.0f;
-
     
     projectiles.clear();
     enemyProjectiles.clear();
@@ -321,14 +335,40 @@ void Reset()
     
 }
 
+void ReadHiScore()
+{
+    if (hiscoreFile)
+    {
+        std::string score;
+        while (std::getline(hiscoreFile, score))
+        {
+            hiscore = std::stof(score);
+        }
+    }
+}
+void WriteHiScore()
+{
+    if (timerElapsed < hiscore)
+    {
+        std::cout << timerElapsed << std::endl;
+        hiscore = timerElapsed;
+        std::ofstream output("hiscore.txt");
+
+        output << hiscore;
+
+        output.close();
+        HandleHiScore();
+    }
+}
+
+
 int main()
 {
-    player.color = BLUE;
-    player.velocity = Vector2{0,0};
-    player.acceleration = Vector2{0,0};
-    player.hitObstacle = 0;
-    player.width = 24;
-    player.height = 32;
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
+    SetTargetFPS(TARGET_FPS);
+
+    // Audio initialization
+    InitAudioDevice();
 
     while (std::getline(constantsFile, line)) {
         std::string variable, value;
@@ -371,8 +411,20 @@ int main()
             std::istringstream iss(value);
             iss >> cameraBounds.x >> cameraBounds.y >> cameraBounds.z >> cameraBounds.w;
         }
-        
     }
+    
+    // Player initialization
+    player.color = BLUE;
+    player.velocity = Vector2{0,0};
+    player.acceleration = Vector2{0,0};
+    player.hitObstacle = 0;
+    player.width = 24;
+    player.height = 32;
+    player.fireSound = LoadSound("./assets/player/PlayerFire.mp3");
+    SetSoundVolume(player.fireSound, 0.5f);
+
+    ReadHiScore();
+    HandleHiScore();
 
      // Read from Level text file
     std::ifstream inputFile("level.txt");
@@ -457,8 +509,6 @@ int main()
     // Close input file
     enemyFile.close();
 
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Platformer");
-    SetTargetFPS(TARGET_FPS);
     Camera2D camera = {0};
     //Vector4 cameraBounds {200, 200, 500, 500}; // {UL.x, UL.y DR.x, DR.y}, CAMERA_EDGES, requires from file, might require new computations due to absolute position on edge snapping and relative position on camera window beyond
     camera.target = {player.position.x, player.position.y};
@@ -744,7 +794,7 @@ int main()
                 {
                     if (IsCircleToRectangleColliding(p, enemy))
                     {
-                        std::cout << "Hit!" << std::endl;
+                        // std::cout << "Hit!" << std::endl;
                         enemy.isDead = true;
                     }
                 }
@@ -858,6 +908,8 @@ int main()
                 enemyDeadCount++;
                 if (enemyDeadCount >= enemies.size())
                 {
+                    hiscore = timerElapsed;
+                    WriteHiScore();
                     Reset();
                 }
                 
@@ -907,7 +959,9 @@ int main()
                     DrawRectangle(enemy.position.x, enemy.position.y, enemy.width, enemy.height, enemy.color);
                 }
             }
-
+            
+            DrawText("HIGH SCORE: ", camera.target.x + 100 , camera.target.y-300, 20, GREEN);
+            DrawText(hiscoreText, camera.target.x + 250 , camera.target.y-300, 20, GREEN);
             DrawText("Kill All Enemies", camera.target.x - 175 , camera.target.y+200, 50, BLUE);
             DrawText(timerText, camera.target.x - 100 , camera.target.y+150, 50, BLUE);
             
