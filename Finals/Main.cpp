@@ -187,15 +187,15 @@ void HandleTimer()
     float currentTime = GetTime();
 
     // Update elapsed time
-    timerElapsed += (currentTime - GetFrameTime());
+    timerElapsed += GetFrameTime();
 
-    int hours = (int)timerElapsed / 3600;
     int minutes = ((int)timerElapsed % 3600) / 60;
     int seconds = ((int)timerElapsed % 3600) % 60;
+    int milliseconds = (int)(timerElapsed * 1000) % 1000; 
 
     // Format the elapsed time as a string in timer format
     
-    sprintf(timerText, "%02d:%02d:%02d", hours, minutes, seconds);
+    sprintf(timerText, "%02d:%02d:%02d", minutes, seconds, milliseconds/10);
 
 }
 

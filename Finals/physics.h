@@ -132,7 +132,7 @@ struct Enemy
         Projectile p;
         p.radius = 10.0f;
         p.uptime = 0.0f;
-        p.timeToDisappear = 0.5f;
+        p.timeToDisappear = 0.8f;
         p.isActive = true;
         p.color = YELLOW;
         p.position = {position.x, position.y + 10.0f};
